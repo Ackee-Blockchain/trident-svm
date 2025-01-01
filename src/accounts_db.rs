@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use serde::de::DeserializeOwned;
-use solana_sdk::{
-    account::{AccountSharedData, ReadableAccount},
-    pubkey::Pubkey,
-    sysvar::SysvarId,
-};
+
+use solana_sdk::account::AccountSharedData;
+use solana_sdk::account::ReadableAccount;
+use solana_sdk::pubkey::Pubkey;
+use solana_sdk::sysvar::SysvarId;
 
 #[derive(Default)]
 pub struct AccountsDB {

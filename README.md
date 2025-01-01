@@ -2,10 +2,7 @@
 
 Implementation of Trident SVM in Rust. Used for processing Solana instructions and storing accounts.
 
-
-## TODO
-
-- [ ]  move instruction processing logic from trident public to this crate
-- [ ] remove dependency on config and fuzzingprogram that is implemented in trident public
-    - potentially creating new crate for the config
-- [ ] remove unnecessary dependencies
+> [!WARNING]
+> In order to be able to execute programs that are included in the TridentSVM using the program entrypoints, use one of the following:
+> - [StubsV1](https://github.com/Ackee-Blockchain/trident-syscall-stubs-v1)
+> - [StubsV2](https://github.com/Ackee-Blockchain/trident-syscall-stubs-v2)
