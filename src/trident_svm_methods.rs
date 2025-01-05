@@ -254,8 +254,11 @@ impl TridentSVM<'_> {
     where
         T: Sysvar + SysvarId,
     {
-        let account = AccountSharedData::new_data(1, &sysvar, &solana_sdk::sysvar::id()).unwrap();
-        self.accounts.add_sysvar(&T::id(), &account);
+        self.accounts.set_sysvar(sysvar);
+    }
+
+    pub fn get_sysvar<T: Sysvar>(&self) -> T {
+        self.accounts.get_sysvar()
     }
 
     pub fn with_native_programs(mut self, native_programs: &[ProgramEntrypoint]) -> Self {
