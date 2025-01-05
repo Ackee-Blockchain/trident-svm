@@ -47,6 +47,8 @@ use crate::trident_svm::TridentSVM;
 use crate::utils::ProgramEntrypoint;
 use crate::utils::SBFTargets;
 use crate::utils::TridentAccountSharedData;
+use trident_syscall_stubs_v1::set_stubs_v1;
+use trident_syscall_stubs_v2::set_stubs_v2;
 
 impl TridentSVM<'_> {
     pub fn new(
@@ -63,6 +65,32 @@ impl TridentSVM<'_> {
             .with_builtins()
             .with_solana_program_library()
             .with_logging()
+    }
+    pub fn new_with_syscalls(
+        program_entries: &[ProgramEntrypoint],
+        sbf_programs: &[SBFTargets],
+        permanent_accounts: &[TridentAccountSharedData],
+    ) -> Self {
+        TridentSVM::default()
+            .with_processor()
+            .with_sysvars()
+            .with_native_programs(program_entries)
+            .with_sbf_programs(sbf_programs)
+            .with_permanent_accounts(permanent_accounts)
+            .with_builtins()
+            .with_solana_program_library()
+            .with_logging()
+            .with_syscalls_v1()
+            .with_syscalls_v2()
+    }
+    pub fn with_syscalls_v1(self) -> Self {
+        set_stubs_v1();
+        self
+    }
+    pub fn with_syscalls_v2(self) -> Self {
+        set_stubs_v2();
+
+        self
     }
     pub fn with_logging(mut self) -> Self {
         if std::env::var("TRIDENT_LOG").is_ok() {
