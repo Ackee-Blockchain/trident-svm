@@ -47,6 +47,7 @@ use crate::trident_svm::TridentSVM;
 use crate::utils::ProgramEntrypoint;
 use crate::utils::SBFTargets;
 use crate::utils::TridentAccountSharedData;
+use solana_sdk::signature::Keypair;
 use trident_syscall_stubs_v1::set_stubs_v1;
 use trident_syscall_stubs_v2::set_stubs_v2;
 
@@ -83,16 +84,16 @@ impl TridentSVM<'_> {
             .with_syscalls_v1()
             .with_syscalls_v2()
     }
-    pub fn with_syscalls_v1(self) -> Self {
+    fn with_syscalls_v1(self) -> Self {
         set_stubs_v1();
         self
     }
-    pub fn with_syscalls_v2(self) -> Self {
+    fn with_syscalls_v2(self) -> Self {
         set_stubs_v2();
 
         self
     }
-    pub fn with_logging(mut self) -> Self {
+    fn with_logging(mut self) -> Self {
         if std::env::var("TRIDENT_LOG").is_ok() {
             setup_solana_logging();
             self.tx_processing_config
@@ -106,7 +107,7 @@ impl TridentSVM<'_> {
         }
         self
     }
-    pub fn with_sysvars(mut self) -> Self {
+    fn with_sysvars(mut self) -> Self {
         self.set_sysvar(&Clock::default());
         self.set_sysvar(&EpochRewards::default());
         self.set_sysvar(&EpochSchedule::default());
@@ -126,18 +127,12 @@ impl TridentSVM<'_> {
         self.set_sysvar(&SlotHistory::default());
         self.set_sysvar(&StakeHistory::default());
 
-        // self.set_sysvar(&Clock::default());
-        // self.set_sysvar(&Rent::default());
-        // #[allow(deprecated)]
-        // let fees = Fees::default();
-        // self.set_sysvar(&fees);
-
         self.processor.fill_missing_sysvar_cache_entries(&self);
 
         self
     }
 
-    pub fn with_processor(self) -> Self {
+    fn with_processor(self) -> Self {
         {
             let compute_budget = ComputeBudget::default();
 
@@ -163,7 +158,7 @@ impl TridentSVM<'_> {
 
         self
     }
-    pub fn with_sbf_programs(mut self, sbf_programs: &[SBFTargets]) -> Self {
+    fn with_sbf_programs(mut self, sbf_programs: &[SBFTargets]) -> Self {
         sbf_programs.iter().for_each(|sbf_target| {
             self.add_program(
                 &sbf_target.program_id,
@@ -174,10 +169,7 @@ impl TridentSVM<'_> {
 
         self
     }
-    pub fn with_permanent_accounts(
-        mut self,
-        permanent_accounts: &[TridentAccountSharedData],
-    ) -> Self {
+    fn with_permanent_accounts(mut self, permanent_accounts: &[TridentAccountSharedData]) -> Self {
         permanent_accounts.iter().for_each(|account| {
             self.accounts
                 .add_permanent_account(&account.address, &account.account);
@@ -185,59 +177,8 @@ impl TridentSVM<'_> {
 
         self
     }
-    pub fn add_program(&mut self, address: &Pubkey, data: &[u8], authority: Option<Pubkey>) {
-        let rent = Rent::default();
 
-        let program_account = address;
-
-        let program_data_account =
-            bpf_loader_upgradeable::get_program_data_address(program_account);
-
-        let state = UpgradeableLoaderState::Program {
-            programdata_address: program_data_account,
-        };
-
-        let buffer = bincode::serialize(&state).unwrap();
-        let account_data = AccountSharedData::create(
-            rent.minimum_balance(buffer.len()),
-            buffer,
-            bpf_loader_upgradeable::id(),
-            true,
-            Default::default(),
-        );
-
-        self.accounts.add_program(program_account, &account_data);
-
-        let state = UpgradeableLoaderState::ProgramData {
-            slot: 0,
-            upgrade_authority_address: authority,
-        };
-        let mut header = bincode::serialize(&state).unwrap();
-
-        let mut complement = vec![
-            0;
-            std::cmp::max(
-                0,
-                UpgradeableLoaderState::size_of_programdata_metadata().saturating_sub(header.len())
-            )
-        ];
-
-        let mut buffer: Vec<u8> = data.to_vec();
-        header.append(&mut complement);
-        header.append(&mut buffer);
-
-        let account_data = AccountSharedData::create(
-            rent.minimum_balance(header.len()),
-            header,
-            bpf_loader_upgradeable::id(),
-            true,
-            Default::default(),
-        );
-
-        self.accounts
-            .add_program(&program_data_account, &account_data);
-    }
-    pub fn with_solana_program_library(mut self) -> Self {
+    fn with_solana_program_library(mut self) -> Self {
         self.add_program(
             &pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
             include_bytes!("solana-program-library/spl-token-mainnet.so"),
@@ -250,18 +191,8 @@ impl TridentSVM<'_> {
         );
         self
     }
-    pub fn set_sysvar<T>(&mut self, sysvar: &T)
-    where
-        T: Sysvar + SysvarId,
-    {
-        self.accounts.set_sysvar(sysvar);
-    }
 
-    pub fn get_sysvar<T: Sysvar>(&self) -> T {
-        self.accounts.get_sysvar()
-    }
-
-    pub fn with_native_programs(mut self, native_programs: &[ProgramEntrypoint]) -> Self {
+    fn with_native_programs(mut self, native_programs: &[ProgramEntrypoint]) -> Self {
         native_programs.iter().for_each(|native| {
             let entry = match native.entry {
                 Some(entry) => entry,
@@ -318,7 +249,7 @@ impl TridentSVM<'_> {
 
         self
     }
-    pub fn with_builtins(mut self) -> Self {
+    fn with_builtins(mut self) -> Self {
         BUILTINS.iter().for_each(|builtint| {
             self.accounts.add_program(
                 &builtint.program_id,
@@ -335,25 +266,99 @@ impl TridentSVM<'_> {
 
         self
     }
-    pub fn settle(&mut self, output: &LoadAndExecuteSanitizedTransactionsOutput) {
-        for x in output.loaded_transactions.iter().flatten() {
-            for account in &x.accounts {
-                if !account.1.executable() && account.1.owner() != &solana_sdk::sysvar::id() {
-                    self.accounts.add_account(&account.0, &account.1);
-                }
-            }
-        }
+}
+
+// This function is also a mock. In the Agave validator, the bank pre-checks
+// transactions before providing them to the SVM API. We mock this step in
+// PayTube, since we don't need to perform such pre-checks.
+pub(crate) fn get_transaction_check_results(
+    len: usize,
+    lamports_per_signature: u64,
+) -> Vec<transaction::Result<CheckedTransactionDetails>> {
+    vec![
+        transaction::Result::Ok(CheckedTransactionDetails {
+            nonce: None,
+            lamports_per_signature,
+        });
+        len
+    ]
+}
+
+impl TridentSVM<'_> {
+    pub fn set_sysvar<T>(&mut self, sysvar: &T)
+    where
+        T: Sysvar + SysvarId,
+    {
+        self.accounts.add_sysvar(sysvar);
     }
-    pub fn clear_accounts(&mut self) {
-        self.accounts.reset_temp();
-        let payer_account = AccountSharedData::new(
-            500_000_000 * LAMPORTS_PER_SOL,
-            0,
-            &solana_sdk::system_program::ID,
+
+    pub fn get_sysvar<T: Sysvar>(&self) -> T {
+        self.accounts.get_sysvar()
+    }
+    pub fn add_temp_account(&mut self, address: &Pubkey, account: &AccountSharedData) {
+        self.accounts.add_account(address, account);
+    }
+    pub fn get_account(&self, address: &Pubkey) -> Option<AccountSharedData> {
+        self.accounts.get_account(address)
+    }
+    pub fn get_payer(&self) -> Keypair {
+        self.payer.insecure_clone()
+    }
+    pub fn add_program(&mut self, address: &Pubkey, data: &[u8], authority: Option<Pubkey>) {
+        let rent = Rent::default();
+
+        let program_account = address;
+
+        let program_data_account =
+            bpf_loader_upgradeable::get_program_data_address(program_account);
+
+        let state = UpgradeableLoaderState::Program {
+            programdata_address: program_data_account,
+        };
+
+        let buffer = bincode::serialize(&state).unwrap();
+        let account_data = AccountSharedData::create(
+            rent.minimum_balance(buffer.len()),
+            buffer,
+            bpf_loader_upgradeable::id(),
+            true,
+            Default::default(),
         );
+
+        self.accounts.add_program(program_account, &account_data);
+
+        let state = UpgradeableLoaderState::ProgramData {
+            slot: 0,
+            upgrade_authority_address: authority,
+        };
+        let mut header = bincode::serialize(&state).unwrap();
+
+        let mut complement = vec![
+            0;
+            std::cmp::max(
+                0,
+                UpgradeableLoaderState::size_of_programdata_metadata().saturating_sub(header.len())
+            )
+        ];
+
+        let mut buffer: Vec<u8> = data.to_vec();
+        header.append(&mut complement);
+        header.append(&mut buffer);
+
+        let account_data = AccountSharedData::create(
+            rent.minimum_balance(header.len()),
+            header,
+            bpf_loader_upgradeable::id(),
+            true,
+            Default::default(),
+        );
+
         self.accounts
-            .add_account(&self.payer.pubkey(), &payer_account);
+            .add_program(&program_data_account, &account_data);
     }
+}
+
+impl TridentSVM<'_> {
     pub fn process_transaction(
         &mut self,
         transaction: Transaction,
@@ -373,20 +378,27 @@ impl TridentSVM<'_> {
             &self.tx_processing_config,
         )
     }
-}
-
-// This function is also a mock. In the Agave validator, the bank pre-checks
-// transactions before providing them to the SVM API. We mock this step in
-// PayTube, since we don't need to perform such pre-checks.
-pub(crate) fn get_transaction_check_results(
-    len: usize,
-    lamports_per_signature: u64,
-) -> Vec<transaction::Result<CheckedTransactionDetails>> {
-    vec![
-        transaction::Result::Ok(CheckedTransactionDetails {
-            nonce: None,
-            lamports_per_signature,
-        });
-        len
-    ]
+    pub fn clear_accounts(&mut self) {
+        self.accounts.reset_temp();
+        let payer_account = AccountSharedData::new(
+            500_000_000 * LAMPORTS_PER_SOL,
+            0,
+            &solana_sdk::system_program::ID,
+        );
+        self.accounts
+            .add_account(&self.payer.pubkey(), &payer_account);
+    }
+    pub fn settle_accounts(&mut self, accounts: &[(Pubkey, AccountSharedData)]) {
+        for account in accounts {
+            if !account.1.executable() && account.1.owner() != &solana_sdk::sysvar::id() {
+                // Update permanent account if it should be updated
+                if self.accounts.get_permanent_account(&account.0).is_some() {
+                    self.accounts.add_permanent_account(&account.0, &account.1);
+                } else {
+                    // Otherwise, add it to the temp accounts
+                    self.accounts.add_account(&account.0, &account.1);
+                }
+            }
+        }
+    }
 }

@@ -19,10 +19,10 @@ pub struct AccountsDB {
 }
 
 impl AccountsDB {
-    pub fn get_account(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
-        if let Some(account) = self.accounts.get(pubkey) {
+    pub(crate) fn get_account(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
+        if let Some(account) = self.get_temp_account(pubkey) {
             Some(account.to_owned())
-        } else if let Some(permanent_account) = self.permanent_accounts.get(pubkey) {
+        } else if let Some(permanent_account) = self.get_permanent_account(pubkey) {
             Some(permanent_account.to_owned())
         } else if let Some(program) = self.get_program(pubkey) {
             Some(program)
@@ -30,15 +30,50 @@ impl AccountsDB {
             if pubkey.eq(&Clock::id()) {
                 self.update_clock();
             }
-            self.sysvars.get(pubkey).cloned()
+            self.get_sysvar_account(pubkey)
         }
     }
-    pub fn get_sysvar<S: SysvarId + DeserializeOwned>(&self) -> S {
+    pub(crate) fn get_sysvar<S: SysvarId + DeserializeOwned>(&self) -> S {
         if S::id() == Clock::id() {
             self.update_clock();
         }
         bincode::deserialize(self.sysvars.get(&S::id()).unwrap().data()).unwrap()
     }
+    pub(crate) fn get_program(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
+        self.programs.get(pubkey).map(|acc| acc.to_owned())
+    }
+    pub(crate) fn get_temp_account(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
+        self.accounts.get(pubkey).map(|acc| acc.to_owned())
+    }
+    pub(crate) fn get_permanent_account(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
+        self.permanent_accounts
+            .get(pubkey)
+            .map(|acc| acc.to_owned())
+    }
+    pub(crate) fn get_sysvar_account(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
+        self.sysvars.get(pubkey).map(|acc| acc.to_owned())
+    }
+
+    // Setters
+    pub(crate) fn add_account(&mut self, pubkey: &Pubkey, account: &AccountSharedData) {
+        let _ = self.accounts.insert(pubkey.to_owned(), account.to_owned());
+    }
+    pub(crate) fn add_permanent_account(&mut self, pubkey: &Pubkey, account: &AccountSharedData) {
+        let _ = self
+            .permanent_accounts
+            .insert(pubkey.to_owned(), account.to_owned());
+    }
+    pub(crate) fn add_program(&mut self, pubkey: &Pubkey, account: &AccountSharedData) {
+        let _ = self.programs.insert(pubkey.to_owned(), account.to_owned());
+    }
+    pub(crate) fn add_sysvar<T>(&mut self, sysvar: &T)
+    where
+        T: Sysvar + SysvarId,
+    {
+        let account = AccountSharedData::new_data(1, &sysvar, &solana_sdk::sysvar::id()).unwrap();
+        let _ = self.sysvars.insert(T::id(), account);
+    }
+
     fn update_clock(&self) {
         let mut clock: Clock =
             bincode::deserialize(self.sysvars.get(&Clock::id()).unwrap().data()).unwrap();
@@ -50,31 +85,10 @@ impl AccountsDB {
         // TODO: remove this once we have a proper way to set sysvars
         #[allow(mutable_transmutes)]
         let mutable_db = unsafe { std::mem::transmute::<&AccountsDB, &mut AccountsDB>(self) };
-        mutable_db.set_sysvar::<Clock>(&clock);
-    }
-    fn get_program(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
-        self.programs.get(pubkey).map(|acc| acc.to_owned())
-    }
-    pub fn add_account(&mut self, pubkey: &Pubkey, account: &AccountSharedData) {
-        let _ = self.accounts.insert(pubkey.to_owned(), account.to_owned());
-    }
-    pub fn add_permanent_account(&mut self, pubkey: &Pubkey, account: &AccountSharedData) {
-        let _ = self
-            .permanent_accounts
-            .insert(pubkey.to_owned(), account.to_owned());
-    }
-    pub fn add_program(&mut self, pubkey: &Pubkey, account: &AccountSharedData) {
-        let _ = self.programs.insert(pubkey.to_owned(), account.to_owned());
-    }
-    pub fn set_sysvar<T>(&mut self, sysvar: &T)
-    where
-        T: Sysvar + SysvarId,
-    {
-        let account = AccountSharedData::new_data(1, &sysvar, &solana_sdk::sysvar::id()).unwrap();
-        self.sysvars.insert(T::id(), account);
+        mutable_db.add_sysvar::<Clock>(&clock);
     }
 
-    pub fn reset_temp(&mut self) {
+    pub(crate) fn reset_temp(&mut self) {
         self.accounts = Default::default();
     }
 }
