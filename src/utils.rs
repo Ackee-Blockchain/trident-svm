@@ -4,9 +4,9 @@ use solana_sdk::account::AccountSharedData;
 use solana_sdk::pubkey::Pubkey;
 
 pub struct ProgramEntrypoint {
-    pub program_id: Pubkey,
-    pub authority: Option<Pubkey>,
-    pub entry: Option<BuiltinFunctionWithContext>,
+    pub(crate) program_id: Pubkey,
+    pub(crate) authority: Option<Pubkey>,
+    pub(crate) entry: Option<BuiltinFunctionWithContext>,
 }
 impl ProgramEntrypoint {
     pub fn new(
@@ -23,9 +23,9 @@ impl ProgramEntrypoint {
 }
 
 pub struct SBFTargets {
-    pub program_id: Pubkey,
-    pub authority: Option<Pubkey>,
-    pub data: Vec<u8>,
+    pub(crate) program_id: Pubkey,
+    pub(crate) authority: Option<Pubkey>,
+    pub(crate) data: Vec<u8>,
 }
 impl SBFTargets {
     pub fn new(program_id: Pubkey, authority: Option<Pubkey>, data: Vec<u8>) -> SBFTargets {
