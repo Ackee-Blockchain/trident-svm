@@ -51,18 +51,21 @@ macro_rules! processor {
             let (program_id_, account_infos, data) = unsafe {
                 $crate::processor::deserialize(&mut parameter_bytes.as_slice_mut()[0] as *mut u8)
             };
+
             ///Convert program_id_ to Pubkey of correct solana program version
+            /// The type is inferred by the compiler/
             let program_id = unsafe {
                 std::mem::transmute::<
                     &$crate::processor::Pubkey,
-                    &anchor_lang::solana_program::pubkey::Pubkey,
+                    &_,
                 >(&program_id_)
             };
             ///Convert account_infos to Vec<AccountInfo> of correct solana program version
+            /// The type is inferred by the compiler/
             let account_infos = unsafe {
                 std::mem::transmute::<
                     &[$crate::processor::account_info::AccountInfo<'_>],
-                    &[anchor_lang::solana_program::account_info::AccountInfo<'_>],
+                    &_,
                 >(&account_infos)
             };
             ///Log program invoke
@@ -129,11 +132,12 @@ macro_rules! processor {
             };
 
             ///Post invocation
+            /// The type is inferred by the compiler
             let account_infos = unsafe {
                 std::mem::transmute::<
-                    &[anchor_lang::solana_program::account_info::AccountInfo<'_>],
+                    & _,
                     &[$crate::processor::account_info::AccountInfo<'_>],
-                >(&account_infos)
+                >(account_infos)
             };
 
             ///Post invocation
