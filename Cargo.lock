@@ -3400,7 +3400,7 @@ dependencies = [
 [[package]]
 name = "trident-syscall-stubs-v1"
 version = "0.0.1"
-source = "git+https://github.com/Ackee-Blockchain/trident-syscall-stubs#b24d64156fda33e608249d290f57c7f947b564bb"
+source = "git+https://github.com/Ackee-Blockchain/trident-syscall-stubs#d3b7451a264ab80cf39cccf26de9cce96bfb3acc"
 dependencies = [
  "serde",
  "solana-program 1.18.26",
@@ -3411,7 +3411,7 @@ dependencies = [
 [[package]]
 name = "trident-syscall-stubs-v2"
 version = "0.0.1"
-source = "git+https://github.com/Ackee-Blockchain/trident-syscall-stubs#b24d64156fda33e608249d290f57c7f947b564bb"
+source = "git+https://github.com/Ackee-Blockchain/trident-syscall-stubs#d3b7451a264ab80cf39cccf26de9cce96bfb3acc"
 dependencies = [
  "serde",
  "solana-program-runtime",
