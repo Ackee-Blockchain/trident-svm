@@ -30,8 +30,10 @@ bincode = "1.3"
 
 
 [dependencies.trident-syscall-stubs-v1]
-git = "https://github.com/Ackee-Blockchain/trident-syscall-stubs-v1"
+git = "https://github.com/Ackee-Blockchain/trident-syscall-stubs"
+package = "trident-syscall-stubs-v1"
 
 
 [dependencies.trident-syscall-stubs-v2]
-git = "https://github.com/Ackee-Blockchain/trident-syscall-stubs-v2"
+git = "https://github.com/Ackee-Blockchain/trident-syscall-stubs"
+package = "trident-syscall-stubs-v2"

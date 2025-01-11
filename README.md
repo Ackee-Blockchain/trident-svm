@@ -5,5 +5,5 @@ Implementation of Trident SVM in Rust. Used for processing Solana instructions a
 
 > [!NOTE]
 > Trident SVM optionally sets syscall stubs for solana 1.18 and 2.0:
-> - [StubsV1](https://github.com/Ackee-Blockchain/trident-syscall-stubs-v1)
-> - [StubsV2](https://github.com/Ackee-Blockchain/trident-syscall-stubs-v2)
+> - [StubsV1](https://github.com/Ackee-Blockchain/trident-syscall-stubs)
+> - [StubsV2](https://github.com/Ackee-Blockchain/trident-syscall-stubs)
