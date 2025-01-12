@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::UNIX_EPOCH;
 
 use serde::de::DeserializeOwned;
 
@@ -8,7 +9,6 @@ use solana_sdk::clock::Clock;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::sysvar::Sysvar;
 use solana_sdk::sysvar::SysvarId;
-use std::time::UNIX_EPOCH;
 
 #[derive(Default)]
 pub struct AccountsDB {

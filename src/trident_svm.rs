@@ -1,5 +1,6 @@
 use std::collections::HashSet;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use std::sync::RwLock;
 
 use solana_sdk::account::AccountSharedData;
 use solana_sdk::account::ReadableAccount;
@@ -23,13 +24,13 @@ use crate::accounts_db::AccountsDB;
 use crate::trident_fork_graphs::TridentForkGraph;
 
 pub struct TridentSVM<'a> {
-    pub accounts: AccountsDB,
-    pub payer: Keypair,
-    pub feature_set: Arc<FeatureSet>,
-    pub processor: TransactionBatchProcessor<TridentForkGraph>,
-    pub fork_graph: Arc<RwLock<TridentForkGraph>>,
-    pub tx_processing_environment: TransactionProcessingEnvironment<'a>,
-    pub tx_processing_config: TransactionProcessingConfig<'a>,
+    pub(crate) accounts: AccountsDB,
+    pub(crate) payer: Keypair,
+    pub(crate) feature_set: Arc<FeatureSet>,
+    pub(crate) processor: TransactionBatchProcessor<TridentForkGraph>,
+    pub(crate) fork_graph: Arc<RwLock<TridentForkGraph>>,
+    pub(crate) tx_processing_environment: TransactionProcessingEnvironment<'a>,
+    pub(crate) tx_processing_config: TransactionProcessingConfig<'a>,
 }
 
 impl TransactionProcessingCallback for TridentSVM<'_> {

@@ -16,6 +16,7 @@ use solana_sdk::native_token::LAMPORTS_PER_SOL;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::rent::Rent;
+use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 use solana_sdk::slot_hashes::SlotHashes;
 use solana_sdk::slot_history::SlotHistory;
@@ -31,8 +32,9 @@ use solana_sdk::sysvar::SysvarId;
 use solana_sdk::transaction;
 use solana_sdk::transaction::SanitizedTransaction;
 use solana_sdk::transaction::Transaction;
-use solana_svm::account_loader::CheckedTransactionDetails;
+use solana_sdk::transaction::TransactionError;
 
+use solana_svm::account_loader::CheckedTransactionDetails;
 use solana_svm::transaction_processor::LoadAndExecuteSanitizedTransactionsOutput;
 
 use solana_bpf_loader_program::syscalls::create_program_runtime_environment_v1;
@@ -47,7 +49,7 @@ use crate::trident_svm::TridentSVM;
 use crate::utils::ProgramEntrypoint;
 use crate::utils::SBFTargets;
 use crate::utils::TridentAccountSharedData;
-use solana_sdk::signature::Keypair;
+
 use trident_syscall_stubs_v1::set_stubs_v1;
 use trident_syscall_stubs_v2::set_stubs_v2;
 
@@ -377,6 +379,57 @@ impl TridentSVM<'_> {
             &self.tx_processing_environment,
             &self.tx_processing_config,
         )
+    }
+    pub fn process_transaction_with_settle(
+        &mut self,
+        transaction: Transaction,
+    ) -> solana_sdk::transaction::Result<()> {
+        let sanitezed_tx =
+            SanitizedTransaction::try_from_legacy_transaction(transaction, &HashSet::new())?;
+
+        let fee_structure = FeeStructure::default();
+        let lamports_per_signature = fee_structure.lamports_per_signature;
+
+        let result = self.processor.load_and_execute_sanitized_transactions(
+            self,
+            &[sanitezed_tx],
+            get_transaction_check_results(1, lamports_per_signature),
+            &self.tx_processing_environment,
+            &self.tx_processing_config,
+        );
+
+        // TODO: Check why there is vector of Transaction results
+        // We process only one transaction here, so it might possible be always 1 ?
+        // TODO: Check if this is correct way to check if transaction was executed, potentially
+        // add support to process the whole vector
+        let execution_result = if result.execution_results.len() != 1 {
+            return Err(TransactionError::ProgramCacheHitMaxLimit);
+        } else {
+            &result.execution_results[0]
+        };
+
+        match &execution_result {
+            solana_svm::transaction_results::TransactionExecutionResult::Executed {
+                details,
+                ..
+            } => {
+                details
+                    .status
+                    .as_ref()
+                    .map_err(|transaction_error| transaction_error.clone())?;
+
+                match &result.loaded_transactions[0] {
+                    Ok(loaded_transaction) => {
+                        self.settle_accounts(&loaded_transaction.accounts);
+                        Ok(())
+                    }
+                    Err(transaction_error) => Err(transaction_error.clone()),
+                }
+            }
+            solana_svm::transaction_results::TransactionExecutionResult::NotExecuted(
+                transaction_error,
+            ) => Err(transaction_error.clone()),
+        }
     }
     pub fn clear_accounts(&mut self) {
         self.accounts.reset_temp();
