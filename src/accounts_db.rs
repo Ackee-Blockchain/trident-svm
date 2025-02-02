@@ -77,15 +77,20 @@ impl AccountsDB {
     fn update_clock(&self) {
         let mut clock: Clock =
             bincode::deserialize(self.sysvars.get(&Clock::id()).unwrap().data()).unwrap();
-        clock.unix_timestamp = std::time::SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards!")
-            .as_secs() as i64;
 
-        // TODO: remove this once we have a proper way to set sysvars
-        #[allow(mutable_transmutes)]
-        let mutable_db = unsafe { std::mem::transmute::<&AccountsDB, &mut AccountsDB>(self) };
-        mutable_db.add_sysvar::<Clock>(&clock);
+        // TODO: find better way how to do this , time needs to be
+        // updated regularly between instructions
+        if clock.unix_timestamp == 0 {
+            clock.unix_timestamp = std::time::SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards!")
+                .as_secs() as i64;
+
+            // TODO: remove this once we have a proper way to set sysvars
+            #[allow(mutable_transmutes)]
+            let mutable_db = unsafe { std::mem::transmute::<&AccountsDB, &mut AccountsDB>(self) };
+            mutable_db.add_sysvar::<Clock>(&clock);
+        }
     }
 
     pub(crate) fn reset_temp(&mut self) {

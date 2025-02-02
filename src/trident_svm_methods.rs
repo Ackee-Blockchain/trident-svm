@@ -129,8 +129,6 @@ impl TridentSVM<'_> {
         self.set_sysvar(&SlotHistory::default());
         self.set_sysvar(&StakeHistory::default());
 
-        self.processor.fill_missing_sysvar_cache_entries(&self);
-
         self
     }
 
@@ -365,6 +363,13 @@ impl TridentSVM<'_> {
         &mut self,
         transaction: Transaction,
     ) -> LoadAndExecuteSanitizedTransactionsOutput {
+        // reset sysvar cache
+        self.processor.reset_sysvar_cache();
+
+        // replenish sysvar cache with sysvars from the accounts db
+        self.processor.fill_missing_sysvar_cache_entries(self);
+
+        // create sanitized transaction
         let sanitezed_tx =
             SanitizedTransaction::try_from_legacy_transaction(transaction, &HashSet::new())
                 .unwrap();
@@ -372,6 +377,7 @@ impl TridentSVM<'_> {
         let fee_structure = FeeStructure::default();
         let lamports_per_signature = fee_structure.lamports_per_signature;
 
+        // execute transaction
         self.processor.load_and_execute_sanitized_transactions(
             self,
             &[sanitezed_tx],
@@ -384,12 +390,21 @@ impl TridentSVM<'_> {
         &mut self,
         transaction: Transaction,
     ) -> solana_sdk::transaction::Result<()> {
+        // reset sysvar cache
+        self.processor.reset_sysvar_cache();
+
+        // replenish sysvar cache with sysvars from the accounts db
+        self.processor.fill_missing_sysvar_cache_entries(self);
+
+        // create sanitized transaction
         let sanitezed_tx =
             SanitizedTransaction::try_from_legacy_transaction(transaction, &HashSet::new())?;
 
+        // get fee structure
         let fee_structure = FeeStructure::default();
         let lamports_per_signature = fee_structure.lamports_per_signature;
 
+        // execute transaction
         let result = self.processor.load_and_execute_sanitized_transactions(
             self,
             &[sanitezed_tx],
