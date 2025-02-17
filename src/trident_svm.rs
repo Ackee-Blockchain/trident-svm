@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -103,7 +102,13 @@ impl Default for TridentSVM {
             accounts: Default::default(),
             payer: payer.insecure_clone(),
             feature_set: Arc::new(FeatureSet::all_enabled()),
-            processor: TransactionBatchProcessor::<TridentForkGraph>::new(1, 1, HashSet::default()),
+            processor: TransactionBatchProcessor::<TridentForkGraph>::new(
+                1,
+                1,
+                Arc::downgrade(&Arc::new(RwLock::new(TridentForkGraph {}))),
+                None,
+                None,
+            ),
             fork_graph: Arc::new(RwLock::new(TridentForkGraph {})),
             fuzz_stats: None,
         };

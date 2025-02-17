@@ -9,8 +9,11 @@ use solana_bpf_loader_program::serialization::serialize_parameters;
 
 use solana_program_runtime::invoke_context::InvokeContext;
 
-use solana_rbpf::aligned_memory::AlignedMemory;
-use solana_rbpf::ebpf::HOST_ALIGN;
+// use solana_rbpf::aligned_memory::AlignedMemory;
+// use solana_rbpf::ebpf::HOST_ALIGN;
+
+use solana_sbpf::aligned_memory::AlignedMemory;
+use solana_sbpf::ebpf::HOST_ALIGN;
 
 use trident_syscall_stubs_v1::set_invoke_context as set_invoke_context_v1;
 use trident_syscall_stubs_v2::set_invoke_context as set_invoke_context_v2;
@@ -23,9 +26,9 @@ macro_rules! processor {
         Some(|vm, _arg0, _arg1, _arg2, _arg3, _arg4| {
             let vm = unsafe {
                 &mut *((vm as *mut u64).offset(
-                    -($crate::processor::solana_rbpf::vm::get_runtime_environment_key() as isize),
+                    -($crate::processor::solana_sbpf::vm::get_runtime_environment_key() as isize),
                 )
-                    as *mut $crate::processor::solana_rbpf::vm::EbpfVm<
+                    as *mut $crate::processor::solana_sbpf::vm::EbpfVm<
                         $crate::processor::solana_program_runtime::invoke_context::InvokeContext,
                     >)
             };
@@ -37,7 +40,7 @@ macro_rules! processor {
                     Err(err) => {
                         vm.program_result = Err(err)
                             .map_err(|err| {
-                                $crate::processor::solana_rbpf::error::EbpfError::SyscallError(err)
+                                $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
                             })
                             .into();
                         return;
@@ -103,7 +106,7 @@ macro_rules! processor {
                         {
                             vm.program_result = Err(err)
                                 .map_err(|err| {
-                                    $crate::processor::solana_rbpf::error::EbpfError::SyscallError(err)
+                                    $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
                                 }).into();
                         }
                         return;
@@ -123,7 +126,7 @@ macro_rules! processor {
                     {
                         vm.program_result = Err(err)
                             .map_err(|err| {
-                                $crate::processor::solana_rbpf::error::EbpfError::SyscallError(err)
+                                $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
                             })
                             .into();
                     }
@@ -150,7 +153,7 @@ macro_rules! processor {
                 Err(err) => {
                     vm.program_result = Err(err)
                         .map_err(|err| {
-                            $crate::processor::solana_rbpf::error::EbpfError::SyscallError(err)
+                            $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
                         })
                         .into();
                     return;

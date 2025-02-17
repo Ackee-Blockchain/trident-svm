@@ -1,34 +1,38 @@
 [package]
 name = "trident-svm"
 authors = ["Ackee Blockchain Security <hello@ackee.xyz>"]
-version = "0.0.3"
+version = "0.0.4-rc.1"
 edition = "2021"
 repository = "https://github.com/Ackee-Blockchain/trident-svm"
 license-file = "./LICENSE"
 readme = "./README.md"
 description = "Trident SVM implementation by Ackee Blockchain Security"
 
+
+# !!!!
+# The 2.1 version as minimum is because there were breaking changes
+# between 2.0 and 2.1
 [dependencies]
 
 # Solana
-solana-sdk = "~2.0"
-solana-program-runtime = "~2.0"
-solana_rbpf = "~0.8"
+solana-sdk = "2.1"
+solana-program-runtime = "2.1"
+solana-sbpf = "0.10"
 
 # Programs
-solana-system-program = "~2.0"
-solana-bpf-loader-program = "~2.0"
-solana-vote-program = "~2.0"
-solana-stake-program = "~2.0"
-solana-config-program = "~2.0"
-solana-compute-budget-program = "~2.0"
-solana-address-lookup-table-program = "~2.0"
-solana-loader-v4-program = "~2.0"
+solana-system-program = "2.1"
+solana-bpf-loader-program = "2.1"
+solana-vote-program = "2.1"
+solana-stake-program = "2.1"
+solana-config-program = "2.1"
+solana-compute-budget-program = "2.1"
+solana-address-lookup-table-program = "2.1"
+solana-loader-v4-program = "2.1"
 
 # Solana SVM
-solana-svm = "~2.0"
-solana-compute-budget = "~2.0"
-solana-logger = "~2.0"
+solana-svm = "2.1"
+solana-compute-budget = "2.1"
+solana-logger = "2.1"
 
 # Misc
 serde = { version = "1", default-features = false }
@@ -38,7 +42,7 @@ shared_memory = "0.12"
 
 # Syscall stubs
 [dependencies.trident-syscall-stubs-v1]
-version = "0.0.1"
+version = "0.0.2-rc.1"
 
 [dependencies.trident-syscall-stubs-v2]
-version = "0.0.1"
+version = "0.0.2-rc.1"
