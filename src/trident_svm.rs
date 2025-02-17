@@ -58,7 +58,13 @@ impl Default for TridentSVM<'_> {
             accounts: Default::default(),
             payer: payer.insecure_clone(),
             feature_set: Arc::new(FeatureSet::all_enabled()),
-            processor: TransactionBatchProcessor::<TridentForkGraph>::new(1, 1, HashSet::default()),
+            processor: TransactionBatchProcessor::<TridentForkGraph>::new(
+                1,
+                1,
+                Arc::downgrade(&Arc::new(RwLock::new(TridentForkGraph {}))),
+                None,
+                None,
+            ),
             fork_graph: Arc::new(RwLock::new(TridentForkGraph {})),
             tx_processing_config: TransactionProcessingConfig {
                 compute_budget: Some(ComputeBudget::default()),
@@ -72,12 +78,11 @@ impl Default for TridentSVM<'_> {
             },
             tx_processing_environment: TransactionProcessingEnvironment {
                 blockhash: Hash::default(),
-                epoch_total_stake: None,
-                epoch_vote_accounts: None,
+                blockhash_lamports_per_signature: 0,
                 feature_set: Arc::new(FeatureSet::all_enabled()),
-                fee_structure: None,
-                lamports_per_signature,
+                fee_lamports_per_signature: 0,
                 rent_collector: None,
+                epoch_total_stake: 0,
             },
         };
 

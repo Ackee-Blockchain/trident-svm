@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use solana_bpf_loader_program::syscalls::create_program_runtime_environment_v2;
 use solana_sdk::account::AccountSharedData;
 use solana_sdk::account::ReadableAccount;
 use solana_sdk::account::WritableAccount;
@@ -152,8 +153,8 @@ impl TridentSVM<'_> {
                 )
                 .unwrap(),
             );
-            // cache.environments.program_runtime_v2 =
-            //     Arc::new(create_program_runtime_environment_v2(&compute_budget, true));
+            cache.environments.program_runtime_v2 =
+                Arc::new(create_program_runtime_environment_v2(&compute_budget, true));
         }
 
         self
@@ -275,13 +276,7 @@ pub(crate) fn get_transaction_check_results(
     len: usize,
     lamports_per_signature: u64,
 ) -> Vec<transaction::Result<CheckedTransactionDetails>> {
-    vec![
-        transaction::Result::Ok(CheckedTransactionDetails {
-            nonce: None,
-            lamports_per_signature,
-        });
-        len
-    ]
+    vec![transaction::Result::Ok(CheckedTransactionDetails::new(None, lamports_per_signature)); len]
 }
 
 impl TridentSVM<'_> {
@@ -417,34 +412,50 @@ impl TridentSVM<'_> {
         // We process only one transaction here, so it might possible be always 1 ?
         // TODO: Check if this is correct way to check if transaction was executed, potentially
         // add support to process the whole vector
-        let execution_result = if result.execution_results.len() != 1 {
+        let processing_results = if result.processing_results.len() != 1 {
             return Err(TransactionError::ProgramCacheHitMaxLimit);
         } else {
-            &result.execution_results[0]
+            &result.processing_results[0]
         };
 
-        match &execution_result {
-            solana_svm::transaction_results::TransactionExecutionResult::Executed {
-                details,
-                ..
-            } => {
-                details
-                    .status
-                    .as_ref()
-                    .map_err(|transaction_error| transaction_error.clone())?;
-
-                match &result.loaded_transactions[0] {
-                    Ok(loaded_transaction) => {
-                        self.settle_accounts(&loaded_transaction.accounts);
-                        Ok(())
-                    }
-                    Err(transaction_error) => Err(transaction_error.clone()),
+        match processing_results {
+            Ok(execution_result) => match execution_result.status() {
+                Ok(_) => {
+                    let accounts = &execution_result
+                        .executed_transaction()
+                        .unwrap()
+                        .loaded_transaction
+                        .accounts;
+                    self.settle_accounts(accounts);
+                    Ok(())
                 }
-            }
-            solana_svm::transaction_results::TransactionExecutionResult::NotExecuted(
-                transaction_error,
-            ) => Err(transaction_error.clone()),
+                Err(e) => Err(e),
+            },
+            Err(e) => Err(e.clone()),
         }
+
+        // match &processing_results {
+        //     solana_svm::transaction_results::TransactionExecutionResult::Executed {
+        //         details,
+        //         ..
+        //     } => {
+        //         details
+        //             .status
+        //             .as_ref()
+        //             .map_err(|transaction_error| transaction_error.clone())?;
+
+        //         match &result.loaded_transactions[0] {
+        //             Ok(loaded_transaction) => {
+        //                 self.settle_accounts(&loaded_transaction.accounts);
+        //                 Ok(())
+        //             }
+        //             Err(transaction_error) => Err(transaction_error.clone()),
+        //         }
+        //     }
+        //     solana_svm::transaction_results::TransactionExecutionResult::NotExecuted(
+        //         transaction_error,
+        //     ) => Err(transaction_error.clone()),
+        // }
     }
     pub fn clear_accounts(&mut self) {
         self.accounts.reset_temp();
