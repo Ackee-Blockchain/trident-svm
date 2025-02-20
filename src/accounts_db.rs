@@ -16,6 +16,7 @@ pub struct AccountsDB {
     permanent_accounts: HashMap<Pubkey, AccountSharedData>,
     programs: HashMap<Pubkey, AccountSharedData>,
     sysvars: HashMap<Pubkey, AccountSharedData>,
+    sysvar_tracker: SysvarTracker,
 }
 
 impl AccountsDB {
@@ -72,28 +73,46 @@ impl AccountsDB {
     {
         let account = AccountSharedData::new_data(1, &sysvar, &solana_sdk::sysvar::id()).unwrap();
         let _ = self.sysvars.insert(T::id(), account);
+
+        if T::id() == Clock::id() {
+            self.sysvar_tracker.refresh_last_clock_update();
+        }
     }
 
     fn update_clock(&self) {
         let mut clock: Clock =
             bincode::deserialize(self.sysvars.get(&Clock::id()).unwrap().data()).unwrap();
 
-        // TODO: find better way how to do this , time needs to be
-        // updated regularly between instructions
-        if clock.unix_timestamp == 0 {
-            clock.unix_timestamp = std::time::SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards!")
-                .as_secs() as i64;
+        let current_timestamp = std::time::SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards!")
+            .as_secs();
 
-            // TODO: remove this once we have a proper way to set sysvars
-            #[allow(mutable_transmutes)]
-            let mutable_db = unsafe { std::mem::transmute::<&AccountsDB, &mut AccountsDB>(self) };
-            mutable_db.add_sysvar::<Clock>(&clock);
-        }
+        let time_since_last_update = current_timestamp - self.sysvar_tracker.last_clock_update;
+        clock.unix_timestamp += time_since_last_update as i64;
+
+        // TODO: remove this once we have a proper way to set sysvars
+        #[allow(mutable_transmutes)]
+        let mutable_db = unsafe { std::mem::transmute::<&AccountsDB, &mut AccountsDB>(self) };
+        mutable_db.add_sysvar::<Clock>(&clock);
+        mutable_db.sysvar_tracker.refresh_last_clock_update();
     }
 
     pub(crate) fn reset_temp(&mut self) {
         self.accounts = Default::default();
+    }
+}
+
+#[derive(Default)]
+pub struct SysvarTracker {
+    pub last_clock_update: u64, // unix timestamp as seconds
+}
+
+impl SysvarTracker {
+    pub fn refresh_last_clock_update(&mut self) {
+        self.last_clock_update = std::time::SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards!")
+            .as_secs();
     }
 }
