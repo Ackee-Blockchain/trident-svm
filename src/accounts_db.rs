@@ -88,8 +88,12 @@ impl AccountsDB {
             .expect("Time went backwards!")
             .as_secs();
 
-        let time_since_last_update = current_timestamp - self.sysvar_tracker.last_clock_update;
-        clock.unix_timestamp += time_since_last_update as i64;
+        // current time is always greater than last clock update
+        let time_since_last_update =
+            current_timestamp.saturating_sub(self.sysvar_tracker.last_clock_update);
+        clock.unix_timestamp = clock
+            .unix_timestamp
+            .saturating_add(time_since_last_update as i64);
 
         // TODO: remove this once we have a proper way to set sysvars
         #[allow(mutable_transmutes)]
@@ -100,6 +104,18 @@ impl AccountsDB {
 
     pub(crate) fn reset_temp(&mut self) {
         self.accounts = Default::default();
+    }
+
+    // Helper functions for testing purposes
+    pub fn forward_in_time(&mut self, seconds: i64) {
+        let mut clock: Clock = self.get_sysvar();
+        clock.unix_timestamp = clock.unix_timestamp.saturating_add(seconds);
+        self.add_sysvar(&clock);
+    }
+    pub fn warp_to_timestamp(&mut self, timestamp: i64) {
+        let mut clock: Clock = self.get_sysvar();
+        clock.unix_timestamp = timestamp;
+        self.add_sysvar(&clock);
     }
 }
 
@@ -114,5 +130,125 @@ impl SysvarTracker {
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards!")
             .as_secs();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::thread::sleep;
+    use std::time::Duration;
+
+    #[test]
+    fn test_clock_update() {
+        let mut db = AccountsDB::default();
+
+        // Set initial clock
+        let initial_clock = Clock::default();
+        db.add_sysvar(&initial_clock);
+        let initial_timestamp = db.get_sysvar::<Clock>().unix_timestamp;
+
+        // Sleep for 2 seconds
+        sleep(Duration::from_secs(2));
+        let updated_clock: Clock = db.get_sysvar();
+        assert!(
+            updated_clock.unix_timestamp > initial_timestamp,
+            "Clock timestamp should have increased"
+        );
+        let diff = (updated_clock.unix_timestamp - initial_timestamp) as u64;
+        assert!(
+            (1..=3).contains(&diff),
+            "Clock update difference should be ~2 seconds, got {}",
+            diff
+        );
+    }
+
+    #[test]
+    fn test_sysvar_tracker_updates() {
+        let mut db = AccountsDB::default();
+
+        // Set initial clock and get tracker time
+        db.add_sysvar(&Clock::default());
+        let initial_tracker_time = db.sysvar_tracker.last_clock_update;
+        sleep(Duration::from_secs(1));
+
+        // Force clock update
+        let _: Clock = db.get_sysvar();
+        assert!(
+            db.sysvar_tracker.last_clock_update > initial_tracker_time,
+            "SysvarTracker should have been updated"
+        );
+    }
+
+    #[test]
+    fn test_multiple_clock_updates() {
+        let mut db = AccountsDB::default();
+
+        // Set initial clock
+        let initial_clock = Clock::default();
+        db.add_sysvar(&initial_clock);
+
+        // First update
+        sleep(Duration::from_secs(1));
+        let first_update: Clock = db.get_sysvar();
+        let first_diff = (first_update.unix_timestamp - initial_clock.unix_timestamp) as u64;
+        assert!(
+            (1..=2).contains(&first_diff),
+            "First update difference should be ~1 second"
+        );
+
+        // Second update
+        sleep(Duration::from_secs(1));
+        let second_update: Clock = db.get_sysvar();
+        let second_diff = (second_update.unix_timestamp - first_update.unix_timestamp) as u64;
+        assert!(
+            (1..=2).contains(&second_diff),
+            "Second update difference should be ~1 second"
+        );
+
+        // Verify total elapsed time
+        let total_diff = (second_update.unix_timestamp - initial_clock.unix_timestamp) as u64;
+        assert!(
+            (2..=3).contains(&total_diff),
+            "Total time difference should be ~2 seconds"
+        );
+    }
+
+    #[test]
+    fn test_time_manipulation() {
+        let mut db = AccountsDB::default();
+
+        // Set initial clock
+        let initial_clock = Clock::default();
+        db.add_sysvar(&initial_clock);
+
+        // Get initial time
+        let mut clock: Clock = db.get_sysvar();
+        let initial_time = clock.unix_timestamp;
+
+        // Forward 600 seconds
+        db.forward_in_time(600);
+        clock = db.get_sysvar();
+        assert_eq!(
+            clock.unix_timestamp,
+            initial_time + 600,
+            "Clock should advance 600 seconds"
+        );
+
+        // Warp to specific timestamp
+        db.warp_to_timestamp(500);
+        clock = db.get_sysvar();
+        assert_eq!(
+            clock.unix_timestamp, 500,
+            "Clock should warp to timestamp 500"
+        );
+
+        // Test negative time forwarding
+        db.forward_in_time(-300);
+        clock = db.get_sysvar();
+        assert_eq!(
+            clock.unix_timestamp, 200,
+            "Clock should go back 300 seconds from 500"
+        );
     }
 }
