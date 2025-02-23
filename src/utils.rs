@@ -1,6 +1,7 @@
 use solana_program_runtime::invoke_context::BuiltinFunctionWithContext;
 
 use solana_sdk::account::AccountSharedData;
+use solana_sdk::hash::{Hash, Hasher};
 use solana_sdk::pubkey::Pubkey;
 
 pub struct ProgramEntrypoint {
@@ -45,4 +46,10 @@ impl TridentAccountSharedData {
     pub fn new(address: Pubkey, account: AccountSharedData) -> TridentAccountSharedData {
         Self { address, account }
     }
+}
+
+pub fn create_blockhash(bytes: &[u8]) -> Hash {
+    let mut hasher = Hasher::default();
+    hasher.hash(bytes);
+    hasher.result()
 }

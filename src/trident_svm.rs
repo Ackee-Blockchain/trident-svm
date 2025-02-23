@@ -22,6 +22,7 @@ use solana_compute_budget::compute_budget::ComputeBudget;
 
 use crate::accounts_db::AccountsDB;
 use crate::trident_fork_graphs::TridentForkGraph;
+use crate::utils::create_blockhash;
 
 pub struct TridentSVM<'a> {
     pub(crate) accounts: AccountsDB,
@@ -31,6 +32,8 @@ pub struct TridentSVM<'a> {
     pub(crate) fork_graph: Arc<RwLock<TridentForkGraph>>,
     pub(crate) tx_processing_environment: TransactionProcessingEnvironment<'a>,
     pub(crate) tx_processing_config: TransactionProcessingConfig<'a>,
+    pub(crate) latest_blockhash: Hash,
+    pub(crate) blockhash_check: bool,
 }
 
 impl TransactionProcessingCallback for TridentSVM<'_> {
@@ -79,6 +82,8 @@ impl Default for TridentSVM<'_> {
                 lamports_per_signature,
                 rent_collector: None,
             },
+            latest_blockhash: create_blockhash(b"genesis"),
+            blockhash_check: false,
         };
 
         let payer_account = AccountSharedData::new(
