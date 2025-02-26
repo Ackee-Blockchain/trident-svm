@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+use solana_program_runtime::log_collector::log::debug;
 use solana_sdk::account::AccountSharedData;
 use solana_sdk::account::ReadableAccount;
 use solana_sdk::feature_set::FeatureSet;
@@ -12,6 +13,7 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 
+use solana_sdk::transaction::TransactionError;
 use solana_svm::transaction_processing_callback::TransactionProcessingCallback;
 use solana_svm::transaction_processor::ExecutionRecordingConfig;
 use solana_svm::transaction_processor::TransactionBatchProcessor;
@@ -22,7 +24,7 @@ use solana_compute_budget::compute_budget::ComputeBudget;
 
 use crate::accounts_db::AccountsDB;
 use crate::trident_fork_graphs::TridentForkGraph;
-use crate::utils::create_blockhash;
+use crate::utils::create_hash;
 
 pub struct TridentSVM<'a> {
     pub(crate) accounts: AccountsDB,
@@ -32,8 +34,7 @@ pub struct TridentSVM<'a> {
     pub(crate) fork_graph: Arc<RwLock<TridentForkGraph>>,
     pub(crate) tx_processing_environment: TransactionProcessingEnvironment<'a>,
     pub(crate) tx_processing_config: TransactionProcessingConfig<'a>,
-    pub(crate) latest_blockhash: Hash,
-    pub(crate) blockhash_check: bool,
+    pub(crate) blockhash_config: BlockhashConfig,
 }
 
 impl TransactionProcessingCallback for TridentSVM<'_> {
@@ -82,8 +83,7 @@ impl Default for TridentSVM<'_> {
                 lamports_per_signature,
                 rent_collector: None,
             },
-            latest_blockhash: create_blockhash(b"genesis"),
-            blockhash_check: false,
+            blockhash_config: BlockhashConfig::default(),
         };
 
         let payer_account = AccountSharedData::new(
@@ -94,5 +94,38 @@ impl Default for TridentSVM<'_> {
         client.accounts.add_account(&payer.pubkey(), &payer_account);
 
         client
+    }
+}
+
+pub struct BlockhashConfig {
+    pub(crate) latest_blockhash: Hash,
+    pub(crate) blockhash_check: bool,
+    pub(crate) transaction_block: HashSet<Hash>, //hashes of transactions with current blockhash
+}
+
+impl Default for BlockhashConfig {
+    fn default() -> Self {
+        Self {
+            latest_blockhash: create_hash(b"genesis"),
+            blockhash_check: false,
+            transaction_block: HashSet::default(),
+        }
+    }
+}
+
+impl BlockhashConfig {
+    pub fn expire_blockhash(&mut self) {
+        self.latest_blockhash = create_hash(&self.latest_blockhash.to_bytes());
+        self.transaction_block = HashSet::default();
+    }
+
+    pub fn block_contains_transaction(&mut self, transaction_hash: &Hash) -> Result<(), TransactionError> {
+        if self.transaction_block.contains(transaction_hash) {
+            debug!("Transaction hash {} already in block", transaction_hash);
+            Err(TransactionError::AlreadyProcessed)
+        } else {
+            self.transaction_block.insert(*transaction_hash);
+            Ok(())
+        }
     }
 }

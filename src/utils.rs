@@ -48,7 +48,7 @@ impl TridentAccountSharedData {
     }
 }
 
-pub fn create_blockhash(bytes: &[u8]) -> Hash {
+pub fn create_hash(bytes: &[u8]) -> Hash {
     let mut hasher = Hasher::default();
     hasher.hash(bytes);
     hasher.result()

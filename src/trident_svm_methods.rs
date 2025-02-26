@@ -12,11 +12,8 @@ use solana_sdk::epoch_rewards::EpochRewards;
 use solana_sdk::epoch_schedule::EpochSchedule;
 use solana_sdk::fee::FeeStructure;
 use solana_sdk::hash::Hash;
-use solana_sdk::message::SanitizedMessage;
 use solana_sdk::native_loader;
 use solana_sdk::native_token::LAMPORTS_PER_SOL;
-use solana_sdk::nonce::{state::DurableNonce, NONCED_TX_MARKER_IX_INDEX};
-use solana_sdk::nonce_account::verify_nonce_account;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::rent::Rent;
@@ -27,6 +24,7 @@ use solana_sdk::slot_history::SlotHistory;
 use solana_sdk::stake_history::StakeHistory;
 #[allow(deprecated)]
 use solana_sdk::sysvar::fees::Fees;
+#[allow(deprecated)]
 use solana_sdk::sysvar::recent_blockhashes::Entry;
 #[allow(deprecated)]
 use solana_sdk::sysvar::recent_blockhashes::IterItem;
@@ -51,7 +49,6 @@ use crate::log::turn_off_solana_logging;
 use crate::native::BUILTINS;
 use crate::trident_fork_graphs::TridentForkGraph;
 use crate::trident_svm::TridentSVM;
-use crate::utils::create_blockhash;
 use crate::utils::ProgramEntrypoint;
 use crate::utils::SBFTargets;
 use crate::utils::TridentAccountSharedData;
@@ -123,7 +120,7 @@ impl TridentSVM<'_> {
         let fees = Fees::default();
         self.set_sysvar(&fees);
         // self.set_sysvar(&LastRestartSlot::default());
-        let latest_blockhash = self.latest_blockhash;
+        let latest_blockhash = self.blockhash_config.latest_blockhash;
         #[allow(deprecated)]
         self.set_sysvar(&RecentBlockhashes::from_iter([IterItem(
             0,
@@ -311,12 +308,12 @@ impl TridentSVM<'_> {
         self.payer.insecure_clone()
     }
     pub fn get_latest_blockhash(&self) -> Hash {
-        self.latest_blockhash
+        self.blockhash_config.latest_blockhash
     }
     #[allow(deprecated)]
     pub fn expire_blockhash(&mut self) {
-        const MAX_RECENT_BLOCKHASHES: usize = 150;
-        let new_blockhash = create_blockhash(&self.latest_blockhash.to_bytes());
+        const MAX_RECENT_BLOCKHASHES: usize = 1;
+        self.blockhash_config.expire_blockhash();
 
         // Get existing blockhashes or create new vec if None
         let mut recent_hashes = self
@@ -327,13 +324,12 @@ impl TridentSVM<'_> {
         recent_hashes.insert(
             0,
             Entry::new(
-                &new_blockhash,
+                &self.blockhash_config.latest_blockhash,
                 FeeStructure::default().lamports_per_signature,
             ),
         );
 
         recent_hashes.truncate(MAX_RECENT_BLOCKHASHES);
-        self.latest_blockhash = new_blockhash;
 
         self.set_sysvar(&RecentBlockhashes::from_iter(recent_hashes.iter().map(
             |entry| {
@@ -346,7 +342,7 @@ impl TridentSVM<'_> {
         )));
     }
     pub fn set_blockhash_check(&mut self, check: bool) {
-        self.blockhash_check = check;
+        self.blockhash_config.blockhash_check = check;
     }
     pub fn add_program(&mut self, address: &Pubkey, data: &[u8], authority: Option<Pubkey>) {
         let rent = Rent::default();
@@ -418,8 +414,7 @@ impl TridentSVM<'_> {
             SanitizedTransaction::try_from_legacy_transaction(transaction, &HashSet::new())
                 .unwrap();
 
-        // Check blockhash validity
-        if let Err(err) = self.maybe_blockhash_check(&sanitezed_tx) {
+        if let Err(err) = self.check_transaction_validity(&sanitezed_tx) {
             return LoadAndExecuteSanitizedTransactionsOutput {
                 loaded_transactions: vec![Err(err)],
                 execution_results: vec![],
@@ -454,8 +449,7 @@ impl TridentSVM<'_> {
         let sanitezed_tx =
             SanitizedTransaction::try_from_legacy_transaction(transaction, &HashSet::new())?;
 
-        // Check blockhash validity
-        self.maybe_blockhash_check(&sanitezed_tx)?;
+        self.check_transaction_validity(&sanitezed_tx)?;
 
         // get fee structure
         let fee_structure = FeeStructure::default();
@@ -526,65 +520,38 @@ impl TridentSVM<'_> {
             }
         }
     }
-    fn maybe_blockhash_check(
-        &self,
-        sanitized_tx: &SanitizedTransaction,
-    ) -> Result<(), TransactionError> {
-        if self.blockhash_check {
-            self.check_transaction_age(sanitized_tx)?;
+    fn check_transaction_validity(&mut self, sanitized_tx: &SanitizedTransaction) -> Result<(), TransactionError> {
+        if self.blockhash_config.blockhash_check {
+            self.check_blockhash_validity(sanitized_tx)?;
+            self.is_transaction_hash_valid(sanitized_tx)?;
         }
         Ok(())
     }
-    fn check_transaction_age(&self, tx: &SanitizedTransaction) -> Result<(), TransactionError> {
-        self.check_transaction_age_inner(tx)
-    }
-    fn check_transaction_age_inner(
+    fn check_blockhash_validity(
         &self,
-        tx: &SanitizedTransaction,
+        sanitized_tx: &SanitizedTransaction,
     ) -> Result<(), TransactionError> {
-        let recent_blockhash = tx.message().recent_blockhash();
+            let recent_blockhash = sanitized_tx.message().recent_blockhash();
 
-        // Check if blockhash is in recent blockhashes list
-        #[allow(deprecated)]
-        let is_blockhash_valid = self
-            .get_sysvar::<RecentBlockhashes>()
-            .iter()
-            .any(|item| &item.blockhash == recent_blockhash);
+            // Check if blockhash is in recent blockhashes list
+            #[allow(deprecated)]
+            let is_blockhash_valid = self
+                .get_sysvar::<RecentBlockhashes>()
+                .iter()
+                .any(|item| &item.blockhash == recent_blockhash);
 
-        if is_blockhash_valid
-            || self.check_transaction_for_nonce(
-                tx,
-                &DurableNonce::from_blockhash(&self.latest_blockhash),
-            )
-        {
-            Ok(())
-        } else {
-            debug!(
-                "Blockhash {} not found in recent blockhashes",
-                recent_blockhash
-            );
-            Err(TransactionError::BlockhashNotFound)
-        }
+            if is_blockhash_valid {
+                Ok(())
+            } else {
+                debug!(
+                    "Blockhash {} not found in recent blockhashes",
+                    recent_blockhash
+                );
+                Err(TransactionError::BlockhashNotFound)
+            }
     }
-    fn check_message_for_nonce(&self, message: &SanitizedMessage) -> bool {
-        message
-            .get_durable_nonce()
-            .and_then(|nonce_address| self.accounts.get_account(nonce_address))
-            .and_then(|nonce_account| {
-                verify_nonce_account(&nonce_account, message.recent_blockhash())
-            })
-            .is_some_and(|nonce_data| {
-                message
-                    .get_ix_signers(NONCED_TX_MARKER_IX_INDEX as usize)
-                    .any(|signer| signer == &nonce_data.authority)
-            })
-    }
-    fn check_transaction_for_nonce(
-        &self,
-        tx: &SanitizedTransaction,
-        next_durable_nonce: &DurableNonce,
-    ) -> bool {
-        let nonce_is_advanceable = tx.message().recent_blockhash() != next_durable_nonce.as_hash();
-        nonce_is_advanceable && self.check_message_for_nonce(tx.message())
+    fn is_transaction_hash_valid(&mut self, sanitized_tx: &SanitizedTransaction) -> Result<(), TransactionError> {
+        let transaction_hash = sanitized_tx.message_hash();
+        self.blockhash_config.block_contains_transaction(transaction_hash)
     }
 }
