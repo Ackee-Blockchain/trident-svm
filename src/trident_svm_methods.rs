@@ -35,7 +35,10 @@ use solana_sdk::transaction::Transaction;
 use solana_sdk::transaction::TransactionError;
 
 use solana_svm::account_loader::CheckedTransactionDetails;
+use solana_svm::transaction_processor::ExecutionRecordingConfig;
 use solana_svm::transaction_processor::LoadAndExecuteSanitizedTransactionsOutput;
+use solana_svm::transaction_processor::TransactionProcessingConfig;
+use solana_svm::transaction_processor::TransactionProcessingEnvironment;
 
 use solana_bpf_loader_program::syscalls::create_program_runtime_environment_v1;
 use solana_compute_budget::compute_budget::ComputeBudget;
@@ -47,16 +50,16 @@ use crate::native::BUILTINS;
 use crate::trident_fork_graphs::TridentForkGraph;
 use crate::trident_svm::TridentSVM;
 use crate::utils::ProgramEntrypoint;
-use crate::utils::SBFTargets;
+use crate::utils::SBFTarget;
 use crate::utils::TridentAccountSharedData;
 
 use trident_syscall_stubs_v1::set_stubs_v1;
 use trident_syscall_stubs_v2::set_stubs_v2;
 
-impl TridentSVM<'_> {
+impl TridentSVM {
     pub fn new(
         program_entries: &[ProgramEntrypoint],
-        sbf_programs: &[SBFTargets],
+        sbf_programs: &[SBFTarget],
         permanent_accounts: &[TridentAccountSharedData],
     ) -> Self {
         TridentSVM::default()
@@ -67,11 +70,10 @@ impl TridentSVM<'_> {
             .with_permanent_accounts(permanent_accounts)
             .with_builtins()
             .with_solana_program_library()
-            .with_logging()
     }
     pub fn new_with_syscalls(
         program_entries: &[ProgramEntrypoint],
-        sbf_programs: &[SBFTargets],
+        sbf_programs: &[SBFTarget],
         permanent_accounts: &[TridentAccountSharedData],
     ) -> Self {
         TridentSVM::default()
@@ -82,7 +84,6 @@ impl TridentSVM<'_> {
             .with_permanent_accounts(permanent_accounts)
             .with_builtins()
             .with_solana_program_library()
-            .with_logging()
             .with_syscalls_v1()
             .with_syscalls_v2()
     }
@@ -93,20 +94,6 @@ impl TridentSVM<'_> {
     fn with_syscalls_v2(self) -> Self {
         set_stubs_v2();
 
-        self
-    }
-    fn with_logging(mut self) -> Self {
-        if std::env::var("TRIDENT_LOG").is_ok() {
-            setup_solana_logging();
-            self.tx_processing_config
-                .recording_config
-                .enable_log_recording = true;
-        } else {
-            turn_off_solana_logging();
-            self.tx_processing_config
-                .recording_config
-                .enable_log_recording = false;
-        }
         self
     }
     fn with_sysvars(mut self) -> Self {
@@ -158,7 +145,7 @@ impl TridentSVM<'_> {
 
         self
     }
-    fn with_sbf_programs(mut self, sbf_programs: &[SBFTargets]) -> Self {
+    fn with_sbf_programs(mut self, sbf_programs: &[SBFTarget]) -> Self {
         sbf_programs.iter().for_each(|sbf_target| {
             self.add_program(
                 &sbf_target.program_id,
@@ -194,57 +181,7 @@ impl TridentSVM<'_> {
 
     fn with_native_programs(mut self, native_programs: &[ProgramEntrypoint]) -> Self {
         native_programs.iter().for_each(|native| {
-            let entry = match native.entry {
-                Some(entry) => entry,
-                None => panic!("Native programs have to have entry specified"),
-            };
-
-            self.accounts.add_program(
-                &native.program_id,
-                &native_loader::create_loadable_account_for_test("program-name"),
-            );
-
-            let program_data_account =
-                bpf_loader_upgradeable::get_program_data_address(&native.program_id);
-
-            let state = UpgradeableLoaderState::ProgramData {
-                slot: 0,
-                upgrade_authority_address: native.authority,
-            };
-            let mut header = bincode::serialize(&state).unwrap();
-
-            let mut complement = vec![
-                0;
-                std::cmp::max(
-                    0,
-                    UpgradeableLoaderState::size_of_programdata_metadata()
-                        .saturating_sub(header.len())
-                )
-            ];
-
-            let mut buffer: Vec<u8> = vec![];
-            header.append(&mut complement);
-            header.append(&mut buffer);
-
-            let rent = Rent::default();
-
-            let account_data = AccountSharedData::create(
-                rent.minimum_balance(header.len()),
-                header,
-                bpf_loader_upgradeable::id(),
-                true,
-                Default::default(),
-            );
-
-            self.accounts
-                .add_program(&program_data_account, &account_data);
-
-            self.processor.add_builtin(
-                &self,
-                native.program_id,
-                "program-name",
-                ProgramCacheEntry::new_builtin(0, "program-name".len(), entry),
-            );
+            self.add_native_program(native);
         });
 
         self
@@ -284,7 +221,7 @@ pub(crate) fn get_transaction_check_results(
     ]
 }
 
-impl TridentSVM<'_> {
+impl TridentSVM {
     pub fn set_sysvar<T>(&mut self, sysvar: &T)
     where
         T: Sysvar + SysvarId,
@@ -304,7 +241,17 @@ impl TridentSVM<'_> {
     pub fn get_payer(&self) -> Keypair {
         self.payer.insecure_clone()
     }
-    pub fn add_program(&mut self, address: &Pubkey, data: &[u8], authority: Option<Pubkey>) {
+    pub fn deploy_sbf_program(&mut self, sbf_program: SBFTarget) {
+        self.add_program(
+            &sbf_program.program_id,
+            &sbf_program.data,
+            sbf_program.authority,
+        );
+    }
+    pub fn deploy_native_program(&mut self, native_program: ProgramEntrypoint) {
+        self.add_native_program(&native_program);
+    }
+    fn add_program(&mut self, address: &Pubkey, data: &[u8], authority: Option<Pubkey>) {
         let rent = Rent::default();
 
         let program_account = address;
@@ -356,13 +303,89 @@ impl TridentSVM<'_> {
         self.accounts
             .add_program(&program_data_account, &account_data);
     }
+    fn add_native_program(&mut self, native_program: &ProgramEntrypoint) {
+        let entry = match native_program.entry {
+            Some(entry) => entry,
+            None => panic!("Native programs have to have entry specified"),
+        };
+
+        self.accounts.add_program(
+            &native_program.program_id,
+            &native_loader::create_loadable_account_for_test("program-name"),
+        );
+
+        let program_data_account =
+            bpf_loader_upgradeable::get_program_data_address(&native_program.program_id);
+
+        let state = UpgradeableLoaderState::ProgramData {
+            slot: 0,
+            upgrade_authority_address: native_program.authority,
+        };
+        let mut header = bincode::serialize(&state).unwrap();
+
+        let mut complement = vec![
+            0;
+            std::cmp::max(
+                0,
+                UpgradeableLoaderState::size_of_programdata_metadata().saturating_sub(header.len())
+            )
+        ];
+
+        let mut buffer: Vec<u8> = vec![];
+        header.append(&mut complement);
+        header.append(&mut buffer);
+
+        let rent = Rent::default();
+
+        let account_data = AccountSharedData::create(
+            rent.minimum_balance(header.len()),
+            header,
+            bpf_loader_upgradeable::id(),
+            true,
+            Default::default(),
+        );
+
+        self.accounts
+            .add_program(&program_data_account, &account_data);
+
+        self.processor.add_builtin(
+            self,
+            native_program.program_id,
+            "program-name",
+            ProgramCacheEntry::new_builtin(0, "program-name".len(), entry),
+        );
+    }
 }
 
-impl TridentSVM<'_> {
+impl TridentSVM {
     pub fn process_transaction(
         &mut self,
         transaction: Transaction,
     ) -> LoadAndExecuteSanitizedTransactionsOutput {
+        let fee_structure = FeeStructure::default();
+        let lamports_per_signature = fee_structure.lamports_per_signature;
+
+        let tx_processing_environment = TransactionProcessingEnvironment {
+            blockhash: Hash::default(),
+            epoch_total_stake: None,
+            epoch_vote_accounts: None,
+            feature_set: self.feature_set.clone(),
+            fee_structure: None,
+            lamports_per_signature,
+            rent_collector: None,
+        };
+
+        let tx_processing_config = TransactionProcessingConfig {
+            compute_budget: Some(ComputeBudget::default()),
+            log_messages_bytes_limit: Some(10 * 1000),
+            recording_config: ExecutionRecordingConfig {
+                enable_cpi_recording: true,
+                enable_log_recording: true,
+                enable_return_data_recording: true,
+            },
+            ..Default::default()
+        };
+
         // reset sysvar cache
         self.processor.reset_sysvar_cache();
 
@@ -382,14 +405,46 @@ impl TridentSVM<'_> {
             self,
             &[sanitezed_tx],
             get_transaction_check_results(1, lamports_per_signature),
-            &self.tx_processing_environment,
-            &self.tx_processing_config,
+            &tx_processing_environment,
+            &tx_processing_config,
         )
     }
     pub fn process_transaction_with_settle(
         &mut self,
         transaction: Transaction,
     ) -> solana_sdk::transaction::Result<()> {
+        let fee_structure = FeeStructure::default();
+        let lamports_per_signature = fee_structure.lamports_per_signature;
+
+        let tx_processing_environment = TransactionProcessingEnvironment {
+            blockhash: Hash::default(),
+            epoch_total_stake: None,
+            epoch_vote_accounts: None,
+            feature_set: self.feature_set.clone(),
+            fee_structure: None,
+            lamports_per_signature,
+            rent_collector: None,
+        };
+
+        let mut tx_processing_config = TransactionProcessingConfig {
+            compute_budget: Some(ComputeBudget::default()),
+            log_messages_bytes_limit: Some(10 * 1000),
+            recording_config: ExecutionRecordingConfig {
+                enable_cpi_recording: true,
+                enable_log_recording: true,
+                enable_return_data_recording: true,
+            },
+            ..Default::default()
+        };
+
+        if std::env::var("TRIDENT_LOG").is_ok() {
+            setup_solana_logging();
+            tx_processing_config.recording_config.enable_log_recording = true;
+        } else {
+            turn_off_solana_logging();
+            tx_processing_config.recording_config.enable_log_recording = false;
+        }
+
         // reset sysvar cache
         self.processor.reset_sysvar_cache();
 
@@ -409,8 +464,8 @@ impl TridentSVM<'_> {
             self,
             &[sanitezed_tx],
             get_transaction_check_results(1, lamports_per_signature),
-            &self.tx_processing_environment,
-            &self.tx_processing_config,
+            &tx_processing_environment,
+            &tx_processing_config,
         );
 
         // TODO: Check why there is vector of Transaction results
@@ -456,7 +511,7 @@ impl TridentSVM<'_> {
         self.accounts
             .add_account(&self.payer.pubkey(), &payer_account);
     }
-    pub fn settle_accounts(&mut self, accounts: &[(Pubkey, AccountSharedData)]) {
+    fn settle_accounts(&mut self, accounts: &[(Pubkey, AccountSharedData)]) {
         for account in accounts {
             if !account.1.executable() && account.1.owner() != &solana_sdk::sysvar::id() {
                 // Update permanent account if it should be updated
