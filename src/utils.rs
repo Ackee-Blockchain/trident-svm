@@ -22,13 +22,13 @@ impl ProgramEntrypoint {
     }
 }
 
-pub struct SBFTargets {
+pub struct SBFTarget {
     pub(crate) program_id: Pubkey,
     pub(crate) authority: Option<Pubkey>,
     pub(crate) data: Vec<u8>,
 }
-impl SBFTargets {
-    pub fn new(program_id: Pubkey, authority: Option<Pubkey>, data: Vec<u8>) -> SBFTargets {
+impl SBFTarget {
+    pub fn new(program_id: Pubkey, authority: Option<Pubkey>, data: Vec<u8>) -> Self {
         Self {
             program_id,
             authority,
