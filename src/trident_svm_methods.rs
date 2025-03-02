@@ -49,6 +49,7 @@ use crate::log::turn_off_solana_logging;
 use crate::native::BUILTINS;
 use crate::trident_fork_graphs::TridentForkGraph;
 use crate::trident_svm::TridentSVM;
+use crate::utils::get_current_timestamp;
 use crate::utils::ProgramEntrypoint;
 use crate::utils::SBFTarget;
 use crate::utils::TridentAccountSharedData;
@@ -97,7 +98,11 @@ impl TridentSVM {
         self
     }
     fn with_sysvars(mut self) -> Self {
-        self.set_sysvar(&Clock::default());
+        let clock = Clock {
+            unix_timestamp: get_current_timestamp() as i64,
+            ..Default::default()
+        };
+        self.set_sysvar(&clock);
         self.set_sysvar(&EpochRewards::default());
         self.set_sysvar(&EpochSchedule::default());
         #[allow(deprecated)]

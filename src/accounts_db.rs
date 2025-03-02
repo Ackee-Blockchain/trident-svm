@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::time::UNIX_EPOCH;
 
 use serde::de::DeserializeOwned;
 
@@ -9,6 +8,8 @@ use solana_sdk::clock::Clock;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::sysvar::Sysvar;
 use solana_sdk::sysvar::SysvarId;
+
+use crate::utils::get_current_timestamp;
 
 #[derive(Default)]
 pub struct AccountsDB {
@@ -83,10 +84,7 @@ impl AccountsDB {
         let mut clock: Clock =
             bincode::deserialize(self.sysvars.get(&Clock::id()).unwrap().data()).unwrap();
 
-        let current_timestamp = std::time::SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards!")
-            .as_secs();
+        let current_timestamp = get_current_timestamp();
 
         // current time is always greater than last clock update
         let time_since_last_update =
@@ -126,10 +124,7 @@ pub struct SysvarTracker {
 
 impl SysvarTracker {
     pub fn refresh_last_clock_update(&mut self) {
-        self.last_clock_update = std::time::SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards!")
-            .as_secs();
+        self.last_clock_update = get_current_timestamp();
     }
 }
 
