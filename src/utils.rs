@@ -1,3 +1,5 @@
+use std::time::UNIX_EPOCH;
+
 use solana_program_runtime::invoke_context::BuiltinFunctionWithContext;
 
 use solana_sdk::account::AccountSharedData;
@@ -45,4 +47,11 @@ impl TridentAccountSharedData {
     pub fn new(address: Pubkey, account: AccountSharedData) -> TridentAccountSharedData {
         Self { address, account }
     }
+}
+
+pub(crate) fn get_current_timestamp() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards!")
+        .as_secs()
 }
