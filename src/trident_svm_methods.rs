@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use shared_memory::ShmemConf;
 use solana_sdk::account::AccountSharedData;
 use solana_sdk::account::ReadableAccount;
 use solana_sdk::account::WritableAccount;
@@ -44,6 +45,7 @@ use solana_bpf_loader_program::syscalls::create_program_runtime_environment_v1;
 use solana_compute_budget::compute_budget::ComputeBudget;
 use solana_program_runtime::loaded_programs::ProgramCacheEntry;
 
+use crate::fuzz_stats::fuzz_stats::FuzzStats;
 use crate::log::setup_solana_logging;
 use crate::log::turn_off_solana_logging;
 use crate::native::BUILTINS;
@@ -87,6 +89,44 @@ impl TridentSVM {
             .with_solana_program_library()
             .with_syscalls_v1()
             .with_syscalls_v2()
+    }
+    pub fn new_with_syscalls_n_metrics(
+        program_entries: &[ProgramEntrypoint],
+        sbf_programs: &[SBFTarget],
+        permanent_accounts: &[TridentAccountSharedData],
+        fuzz_stats_path: String,
+    ) -> Self {
+        TridentSVM::default()
+            .with_processor()
+            .with_sysvars()
+            .with_native_programs(program_entries)
+            .with_sbf_programs(sbf_programs)
+            .with_permanent_accounts(permanent_accounts)
+            .with_builtins()
+            .with_solana_program_library()
+            .with_syscalls_v1()
+            .with_syscalls_v2()
+            .with_metrics(fuzz_stats_path)
+    }
+
+    fn with_metrics(mut self, fuzz_stats_path: String) -> Self {
+        let shmem_id = format!("fuzzer_stats_{}", std::process::id());
+
+        let shmem = ShmemConf::new()
+            .size(std::mem::size_of::<FuzzStats>())
+            .os_id(&shmem_id)
+            .create()
+            .expect("Failed to create shared memory");
+
+        // Get a pointer to the shared memory
+        let stats = unsafe { &mut *(shmem.as_ptr() as *mut FuzzStats) };
+
+        // Initialize stats
+        *stats = FuzzStats::new(fuzz_stats_path);
+
+        self.fuzz_stats = Some(shmem);
+
+        self
     }
     fn with_syscalls_v1(self) -> Self {
         set_stubs_v1();
@@ -359,6 +399,27 @@ impl TridentSVM {
             "program-name",
             ProgramCacheEntry::new_builtin(0, "program-name".len(), entry),
         );
+    }
+    pub fn increment_transaction_execution(&mut self, transaction: String) {
+        match &mut self.fuzz_stats {
+            Some(shmem) => {
+                let stats = unsafe { &mut *(shmem.as_ptr() as *mut FuzzStats) };
+                stats.increment_executions(&transaction);
+            }
+            None => {}
+        }
+    }
+    pub fn increment_transaction_success(&mut self, transaction: String) {
+        if let Some(shmem) = &self.fuzz_stats {
+            let stats = unsafe { &*(shmem.as_ptr() as *const FuzzStats) };
+            stats.increment_successful_executions(&transaction);
+        }
+    }
+    pub fn record_transaction_error(&mut self, transaction: String, error_msg: String) {
+        if let Some(shmem) = &self.fuzz_stats {
+            let stats = unsafe { &mut *(shmem.as_ptr() as *mut FuzzStats) };
+            stats.record_error(&transaction, &error_msg);
+        }
     }
 }
 
