@@ -1,18 +1,15 @@
 mod accounts_database;
 mod builder;
 mod log;
+mod methods;
 mod native;
 mod trident_fork_graphs;
-mod trident_svm_accounts;
-mod trident_svm_programs;
-mod trident_svm_transactions;
 mod utils;
 
 pub mod builtin_function;
-pub mod trident_account;
-pub mod trident_entrypoint;
-pub mod trident_program;
+pub mod fuzzing_metrics;
 pub mod trident_svm;
+pub mod types;
 
 pub mod processor {
     pub use crate::builtin_function::post_invocation;
