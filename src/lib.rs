@@ -1,5 +1,6 @@
 pub mod accounts_db;
 pub mod builtin_function;
+pub mod fuzz_stats;
 pub mod log;
 pub mod native;
 pub mod trident_fork_graphs;

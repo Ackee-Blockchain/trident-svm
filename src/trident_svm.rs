@@ -22,6 +22,7 @@ pub struct TridentSVM {
     pub(crate) feature_set: Arc<FeatureSet>,
     pub(crate) processor: TransactionBatchProcessor<TridentForkGraph>,
     pub(crate) fork_graph: Arc<RwLock<TridentForkGraph>>,
+    pub(crate) fuzz_stats: Option<shared_memory::Shmem>,
 }
 
 impl TransactionProcessingCallback for TridentSVM {
@@ -48,6 +49,7 @@ impl Default for TridentSVM {
             feature_set: Arc::new(FeatureSet::all_enabled()),
             processor: TransactionBatchProcessor::<TridentForkGraph>::new(1, 1, HashSet::default()),
             fork_graph: Arc::new(RwLock::new(TridentForkGraph {})),
+            fuzz_stats: None,
         };
 
         let payer_account = AccountSharedData::new(
