@@ -9,9 +9,9 @@ use solana_sdk::rent::Rent;
 
 use solana_program_runtime::loaded_programs::ProgramCacheEntry;
 
-use crate::trident_entrypoint::TridentEntrypoint;
-use crate::trident_program::TridentProgram;
 use crate::trident_svm::TridentSVM;
+use crate::types::trident_entrypoint::TridentEntrypoint;
+use crate::types::trident_program::TridentProgram;
 
 impl TridentSVM {
     pub fn deploy_binary_program(&mut self, program: &TridentProgram) {
