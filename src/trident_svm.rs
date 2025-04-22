@@ -1,15 +1,9 @@
 use std::sync::Arc;
 use std::sync::RwLock;
 
-use shared_memory::ShmemConf;
-use solana_program_runtime::loaded_programs::ProgramCacheEntry;
+use agave_feature_set::FeatureSet;
 use solana_sdk::account::AccountSharedData;
 use solana_sdk::account::ReadableAccount;
-use solana_sdk::clock::Clock;
-use solana_sdk::epoch_rewards::EpochRewards;
-use solana_sdk::epoch_schedule::EpochSchedule;
-use solana_sdk::hash::Hash;
-use solana_sdk::native_loader;
 use solana_sdk::native_token::LAMPORTS_PER_SOL;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;

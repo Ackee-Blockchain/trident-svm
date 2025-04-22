@@ -15,7 +15,7 @@ use solana_program_runtime::invoke_context::InvokeContext;
 use solana_sbpf::aligned_memory::AlignedMemory;
 use solana_sbpf::ebpf::HOST_ALIGN;
 
-use trident_syscall_stubs_v1::set_invoke_context as set_invoke_context_v1;
+// use trident_syscall_stubs_v1::set_invoke_context as set_invoke_context_v1;
 use trident_syscall_stubs_v2::set_invoke_context as set_invoke_context_v2;
 
 static ONCE: Once = Once::new();
@@ -184,7 +184,7 @@ pub fn pre_invocation(
         }
     });
 
-    set_invoke_context_v1(invoke_context);
+    // set_invoke_context_v1(invoke_context);
     set_invoke_context_v2(invoke_context);
 
     let transaction_context = &invoke_context.transaction_context;

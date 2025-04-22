@@ -15,24 +15,25 @@ description = "Trident SVM implementation by Ackee Blockchain Security"
 [dependencies]
 
 # Solana
-solana-sdk = "2.1"
-solana-program-runtime = "2.1"
-solana-sbpf = "0.10"
+solana-sdk = "2.2"
+agave-feature-set = "2.2"
+solana-program-runtime = "2.2"
+solana-sbpf = "0.10.0"
 
 # Programs
-solana-system-program = "2.1"
-solana-bpf-loader-program = "2.1"
-solana-vote-program = "2.1"
-solana-stake-program = "2.1"
-solana-config-program = "2.1"
-solana-compute-budget-program = "2.1"
-solana-address-lookup-table-program = "2.1"
-solana-loader-v4-program = "2.1"
+solana-system-program = "2.2"
+solana-bpf-loader-program = "2.2"
+solana-vote-program = "2.2"
+solana-stake-program = "2.2"
+solana-config-program = "2.2"
+solana-compute-budget-program = "2.2"
+solana-address-lookup-table-program = "2.2"
+solana-loader-v4-program = "2.2"
 
 # Solana SVM
-solana-svm = "2.1"
-solana-compute-budget = "2.1"
-solana-logger = "2.1"
+solana-svm = "2.2"
+solana-compute-budget = "2.2"
+solana-logger = "2.2"
 
 # Misc
 serde = { version = "1", default-features = false }
@@ -41,8 +42,8 @@ serde_json = "1.0"
 shared_memory = "0.12"
 
 # Syscall stubs
-[dependencies.trident-syscall-stubs-v1]
-version = "0.0.2-rc.1"
+# [dependencies.trident-syscall-stubs-v1]
+# # version = "0.0.2-rc.1"
 
 [dependencies.trident-syscall-stubs-v2]
 version = "0.0.2-rc.1"
