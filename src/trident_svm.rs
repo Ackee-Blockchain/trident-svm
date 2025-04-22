@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -27,14 +26,15 @@ use solana_sdk::sysvar::recent_blockhashes::IterItem;
 #[allow(deprecated)]
 use solana_sdk::sysvar::recent_blockhashes::RecentBlockhashes;
 
-use solana_bpf_loader_program::syscalls::create_program_runtime_environment_v1;
-use solana_compute_budget::compute_budget::ComputeBudget;
 use solana_sdk::feature_set::FeatureSet;
+use solana_bpf_loader_program::syscalls::create_program_runtime_environment_v2;
+use solana_compute_budget::compute_budget::ComputeBudget;
 
 use solana_svm::transaction_processing_callback::TransactionProcessingCallback;
 use solana_svm::transaction_processor::TransactionBatchProcessor;
-use trident_syscall_stubs_v1::set_stubs_v1;
-use trident_syscall_stubs_v2::set_stubs_v2;
+// use trident_syscall_stubs_v1::set_stubs_v1;
+// use trident_syscall_stubs_v2::set_stubs_v2;
+use trident_syscall_stubs_v3::set_stubs_v3;
 
 use crate::accounts_database::accounts_db::AccountsDB;
 use crate::builder::TridentSVMBuilder;
@@ -55,13 +55,18 @@ pub struct TridentSVM {
 }
 
 impl TridentSVM {
-    pub(crate) fn initialize_syscalls_v1(&mut self) {
-        set_stubs_v1();
+    // pub(crate) fn initialize_syscalls_v1(&mut self) {
+    //     set_stubs_v1();
+    // }
+
+    // pub(crate) fn initialize_syscalls_v2(&mut self) {
+    //     set_stubs_v2();
+    // }
+
+    pub(crate) fn initialize_syscalls_v3(&mut self) {
+        set_stubs_v3();
     }
 
-    pub(crate) fn initialize_syscalls_v2(&mut self) {
-        set_stubs_v2();
-    }
     pub(crate) fn initialize_metrics(&mut self, fuzz_stats_path: String) {
         let shmem_id = format!("fuzzer_stats_{}", std::process::id());
 
@@ -103,7 +108,13 @@ impl Default for TridentSVM {
             accounts: Default::default(),
             payer: payer.insecure_clone(),
             feature_set: Arc::new(FeatureSet::all_enabled()),
-            processor: TransactionBatchProcessor::<TridentForkGraph>::new(1, 1, HashSet::default()),
+            processor: TransactionBatchProcessor::<TridentForkGraph>::new(
+                1,
+                1,
+                Arc::downgrade(&Arc::new(RwLock::new(TridentForkGraph {}))),
+                None,
+                None,
+            ),
             fork_graph: Arc::new(RwLock::new(TridentForkGraph {})),
             fuzz_stats: None,
         };
@@ -141,13 +152,14 @@ impl TridentSVM {
             cache.fork_graph = Some(Arc::downgrade(&self.fork_graph));
 
             cache.environments.program_runtime_v1 = Arc::new(
-                create_program_runtime_environment_v1(
-                    &self.feature_set,
-                    &compute_budget,
-                    true,
-                    true,
-                )
-                .unwrap(),
+                // create_program_runtime_environment_v1(
+                //     &self.feature_set,
+                //     &compute_budget,
+                //     true,
+                //     true,
+                // )
+                // .unwrap(),
+                create_program_runtime_environment_v2(&compute_budget, true),
             );
             // cache.environments.program_runtime_v2 =
             //     Arc::new(create_program_runtime_environment_v2(&compute_budget, true));

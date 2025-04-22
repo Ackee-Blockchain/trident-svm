@@ -5,8 +5,9 @@ use crate::types::trident_program::TridentProgram;
 
 #[derive(Default)]
 pub struct TridentSVMConfig {
-    syscalls_v1: bool,
-    syscalls_v2: bool,
+    // syscalls_v1: bool,
+    // syscalls_v2: bool,
+    syscalls_v3: bool,
     fuzzing_metrics: String,
     program_entrypoints: Vec<TridentEntrypoint>,
     program_binaries: Vec<TridentProgram>,
@@ -25,13 +26,18 @@ impl TridentSVMBuilder {
         }
     }
 
-    pub fn with_syscalls_v1(mut self) -> Self {
-        self.config.syscalls_v1 = true;
-        self
-    }
+    // pub fn with_syscalls_v1(mut self) -> Self {
+    //     self.config.syscalls_v1 = true;
+    //     self
+    // }
 
-    pub fn with_syscalls_v2(mut self) -> Self {
-        self.config.syscalls_v2 = true;
+    // pub fn with_syscalls_v2(mut self) -> Self {
+    //     self.config.syscalls_v2 = true;
+    //     self
+    // }
+
+    pub fn with_syscalls_v3(mut self) -> Self {
+        self.config.syscalls_v3 = true;
         self
     }
 
@@ -58,11 +64,15 @@ impl TridentSVMBuilder {
     pub fn build(self) -> TridentSVM {
         let mut svm = TridentSVM::default();
 
-        if self.config.syscalls_v1 {
-            svm.initialize_syscalls_v1();
-        }
-        if self.config.syscalls_v2 {
-            svm.initialize_syscalls_v2();
+        // if self.config.syscalls_v1 {
+        //     svm.initialize_syscalls_v1();
+        // }
+        // if self.config.syscalls_v2 {
+        //     svm.initialize_syscalls_v2();
+        // }
+
+        if self.config.syscalls_v3 {
+            svm.initialize_syscalls_v3();
         }
 
         if !self.config.fuzzing_metrics.is_empty() {

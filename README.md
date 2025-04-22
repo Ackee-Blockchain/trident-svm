@@ -35,6 +35,7 @@ git = "https://github.com/Ackee-Blockchain/trident-svm"
 ```
 
 > [!NOTE]
-> Trident SVM optionally sets syscall stubs for solana 1.18 and 2.0:
+> Trident SVM optionally sets syscall stubs for solana 1.18, 2.0, 2.1 and above:
 > - [StubsV1](https://github.com/Ackee-Blockchain/trident-syscall-stubs)
 > - [StubsV2](https://github.com/Ackee-Blockchain/trident-syscall-stubs)
+> - [StubsV3](https://github.com/Ackee-Blockchain/trident-syscall-stubs)

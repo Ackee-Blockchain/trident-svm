@@ -29,11 +29,10 @@ impl TridentSVM {
 
         let tx_processing_environment = TransactionProcessingEnvironment {
             blockhash: Hash::default(),
-            epoch_total_stake: None,
-            epoch_vote_accounts: None,
+            blockhash_lamports_per_signature: 0,
+            epoch_total_stake: 0,
             feature_set: self.feature_set.clone(),
-            fee_structure: None,
-            lamports_per_signature,
+            fee_lamports_per_signature: lamports_per_signature,
             rent_collector: None,
         };
 
@@ -80,11 +79,10 @@ impl TridentSVM {
 
         let tx_processing_environment = TransactionProcessingEnvironment {
             blockhash: Hash::default(),
-            epoch_total_stake: None,
-            epoch_vote_accounts: None,
+            blockhash_lamports_per_signature: 0,
+            epoch_total_stake: 0,
             feature_set: self.feature_set.clone(),
-            fee_structure: None,
-            lamports_per_signature,
+            fee_lamports_per_signature: lamports_per_signature,
             rent_collector: None,
         };
 
@@ -134,33 +132,25 @@ impl TridentSVM {
         // We process only one transaction here, so it might possible be always 1 ?
         // TODO: Check if this is correct way to check if transaction was executed, potentially
         // add support to process the whole vector
-        let execution_result = if result.execution_results.len() != 1 {
+        let processing_result = if result.processing_results.len() != 1 {
             return Err(TransactionError::ProgramCacheHitMaxLimit);
         } else {
-            &result.execution_results[0]
+            &result.processing_results[0]
         };
 
-        match &execution_result {
-            solana_svm::transaction_results::TransactionExecutionResult::Executed {
-                details,
-                ..
-            } => {
-                details
-                    .status
-                    .as_ref()
-                    .map_err(|transaction_error| transaction_error.clone())?;
-
-                match &result.loaded_transactions[0] {
-                    Ok(loaded_transaction) => {
-                        self.settle_accounts(&loaded_transaction.accounts);
-                        Ok(())
-                    }
-                    Err(transaction_error) => Err(transaction_error.clone()),
+        match processing_result {
+            Ok(processed_tx) => match processed_tx.status() {
+                Ok(_) => {
+                    let loaded_tx = &processed_tx
+                        .executed_transaction()
+                        .unwrap()
+                        .loaded_transaction;
+                    self.settle_accounts(&loaded_tx.accounts);
+                    Ok(())
                 }
-            }
-            solana_svm::transaction_results::TransactionExecutionResult::NotExecuted(
-                transaction_error,
-            ) => Err(transaction_error.clone()),
+                Err(error) => Err(error.clone()),
+            },
+            Err(error) => Err(error.clone()),
         }
     }
 }
@@ -173,10 +163,10 @@ pub(crate) fn get_transaction_check_results(
     lamports_per_signature: u64,
 ) -> Vec<solana_sdk::transaction::Result<CheckedTransactionDetails>> {
     vec![
-        solana_sdk::transaction::Result::Ok(CheckedTransactionDetails {
-            nonce: None,
+        solana_sdk::transaction::Result::Ok(CheckedTransactionDetails::new(
+            None,
             lamports_per_signature,
-        });
+        ));
         len
     ]
 }
