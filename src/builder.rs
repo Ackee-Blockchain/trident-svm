@@ -58,9 +58,6 @@ impl TridentSVMBuilder {
     pub fn build(self) -> TridentSVM {
         let mut svm = TridentSVM::default();
 
-        if self.config.syscalls_v1 {
-            svm.initialize_syscalls_v1();
-        }
         if self.config.syscalls_v2 {
             svm.initialize_syscalls_v2();
         }
