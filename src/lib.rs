@@ -17,7 +17,7 @@ pub mod processor {
 
     pub use solana_program_runtime;
     pub use solana_program_runtime::stable_log;
-    pub use solana_rbpf;
+    pub use solana_sbpf;
     pub use solana_sdk::account_info;
     pub use solana_sdk::entrypoint::deserialize;
     pub use solana_sdk::instruction::InstructionError;
