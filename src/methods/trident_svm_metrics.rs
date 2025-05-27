@@ -3,12 +3,9 @@ use crate::trident_svm::TridentSVM;
 
 impl TridentSVM {
     pub fn increment_transaction_execution(&mut self, transaction: String) {
-        match &mut self.fuzz_stats {
-            Some(shmem) => {
-                let stats = unsafe { &mut *(shmem.as_ptr() as *mut FuzzStats) };
-                stats.increment_executions(&transaction);
-            }
-            None => {}
+        if let Some(shmem) = &mut self.fuzz_stats {
+            let stats = unsafe { &mut *(shmem.as_ptr() as *mut FuzzStats) };
+            stats.increment_executions(&transaction);
         }
     }
     pub fn increment_transaction_success(&mut self, transaction: String) {
