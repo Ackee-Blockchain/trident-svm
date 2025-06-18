@@ -185,6 +185,15 @@ impl TridentSVM {
         );
 
         self.deploy_binary_program(&spl_token);
+        
+        // SPL Token 2022 added for new Token 2022 Trident features
+        let spl_token_2022 = TridentProgram::new(
+            pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
+            None,
+            include_bytes!("solana-program-library/spl-2022-token-mainnet.so").to_vec(),
+        );
+
+        self.deploy_binary_program(&spl_token_2022);
 
         let associated_token_program = TridentProgram::new(
             pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
@@ -193,6 +202,41 @@ impl TridentSVM {
         );
 
         self.deploy_binary_program(&associated_token_program);
+
+        let metaplex_token_metadata = TridentProgram::new(
+            pubkey!("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"),
+            None,
+            include_bytes!("solana-program-library/metaplex-token-metadata.so").to_vec(),
+        );
+
+        self.deploy_binary_program(&metaplex_token_metadata);
+
+        // Interesting to have an Oracle program for testing programs with Price feed manipulation
+        // Another good program would be Pyth Oracle, which is good for cross-chain price feeds 
+        let chainlink_oracle = TridentProgram::new(
+            pubkey!("HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny"),
+            None,
+            include_bytes!("solana-program-library/chainlink-oracle.so").to_vec(),
+        );
+
+        self.deploy_binary_program(&chainlink_oracle);
+
+        // Native Stake Pool (SPL Stake Pool):
+        // This program is used for managing stake pools, which can be useful for testing programs that interact with staking
+        let spl_stake_pool = TridentProgram::new(
+            pubkey!("SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy"),
+            None,
+            include_bytes!("solana-program-library/spl-stake-pool.so").to_vec(),
+        );
+        self.deploy_binary_program(&spl_stake_pool);
+
+        // Could be interesting to have candy machine for testing programs that interact with it Minting NFTs
+        let metaplex_candy_machine_v3 = TridentProgram::new(
+            pubkey!("CndyV3LdqHUfDLmE5naZjVN8rBZz4tqhdefbAnjHG3JR"),
+            None,
+            include_bytes!("solana-program-library/metaplex-candy-machine-v3.so").to_vec(),
+        );
+        self.deploy_binary_program(&metaplex_candy_machine_v3);
 
         self
     }
