@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-use shared_memory::ShmemConf;
 use solana_program_runtime::loaded_programs::ProgramCacheEntry;
 use solana_sdk::account::AccountSharedData;
 use solana_sdk::account::ReadableAccount;
@@ -38,7 +37,6 @@ use trident_syscall_stubs_v2::set_stubs_v2;
 
 use crate::accounts_database::accounts_db::AccountsDB;
 use crate::builder::TridentSVMBuilder;
-use crate::fuzzing_metrics::stats::FuzzStats;
 use crate::native::BUILTINS;
 use crate::trident_fork_graphs::TridentForkGraph;
 
@@ -51,7 +49,6 @@ pub struct TridentSVM {
     pub(crate) feature_set: Arc<FeatureSet>,
     pub(crate) processor: TransactionBatchProcessor<TridentForkGraph>,
     pub(crate) fork_graph: Arc<RwLock<TridentForkGraph>>,
-    pub(crate) fuzz_stats: Option<shared_memory::Shmem>,
 }
 
 impl TridentSVM {
@@ -61,23 +58,6 @@ impl TridentSVM {
 
     pub(crate) fn initialize_syscalls_v2(&mut self) {
         set_stubs_v2();
-    }
-    pub(crate) fn initialize_metrics(&mut self, fuzz_stats_path: String) {
-        let shmem_id = format!("fuzzer_stats_{}", std::process::id());
-
-        let shmem = ShmemConf::new()
-            .size(std::mem::size_of::<FuzzStats>())
-            .os_id(&shmem_id)
-            .create()
-            .expect("Failed to create shared memory");
-
-        // Get a pointer to the shared memory
-        let stats = unsafe { &mut *(shmem.as_ptr() as *mut FuzzStats) };
-
-        // Initialize stats
-        *stats = FuzzStats::new(fuzz_stats_path);
-
-        self.fuzz_stats = Some(shmem);
     }
 }
 
@@ -105,7 +85,6 @@ impl Default for TridentSVM {
             feature_set: Arc::new(FeatureSet::all_enabled()),
             processor: TransactionBatchProcessor::<TridentForkGraph>::new(1, 1, HashSet::default()),
             fork_graph: Arc::new(RwLock::new(TridentForkGraph {})),
-            fuzz_stats: None,
         };
 
         let payer_account = AccountSharedData::new(

@@ -7,7 +7,6 @@ mod trident_fork_graphs;
 mod utils;
 
 pub mod builtin_function;
-pub mod fuzzing_metrics;
 pub mod trident_svm;
 pub mod types;
 

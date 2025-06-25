@@ -7,7 +7,6 @@ use crate::types::trident_program::TridentProgram;
 pub struct TridentSVMConfig {
     syscalls_v1: bool,
     syscalls_v2: bool,
-    fuzzing_metrics: String,
     program_entrypoints: Vec<TridentEntrypoint>,
     program_binaries: Vec<TridentProgram>,
     permanent_accounts: Vec<TridentAccountSharedData>,
@@ -50,11 +49,6 @@ impl TridentSVMBuilder {
         self
     }
 
-    pub fn with_fuzzing_metrics(mut self, fuzz_stats_path: String) -> Self {
-        self.config.fuzzing_metrics = fuzz_stats_path;
-        self
-    }
-
     pub fn build(self) -> TridentSVM {
         let mut svm = TridentSVM::default();
 
@@ -63,10 +57,6 @@ impl TridentSVMBuilder {
         }
         if self.config.syscalls_v2 {
             svm.initialize_syscalls_v2();
-        }
-
-        if !self.config.fuzzing_metrics.is_empty() {
-            svm.initialize_metrics(self.config.fuzzing_metrics);
         }
 
         for entry in self.config.program_entrypoints {
