@@ -22,3 +22,7 @@ pub mod processor {
     pub use solana_sdk::instruction::InstructionError;
     pub use solana_sdk::pubkey::Pubkey;
 }
+
+pub mod prelude {
+    pub use solana_svm;
+}
