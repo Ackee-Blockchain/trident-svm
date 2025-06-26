@@ -8,15 +8,15 @@ on:
 jobs:
   Lint-Workspace:
     name: Lint Workspace
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: echo "Starting Lint-Workspace"
 
   lint:
     name: Lint
     needs: Lint-Workspace
-    # This job runs on an Ubuntu 20.04 runner
-    runs-on: ubuntu-20.04
+    # This job runs on an Ubuntu 22.04 runner
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4  # Checkout the code from the repository
 
@@ -50,6 +50,6 @@ jobs:
   checks:
     name: Lint-Workspace (Checks)
     needs: lint
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: echo "Lint Workspace completed successfully"
