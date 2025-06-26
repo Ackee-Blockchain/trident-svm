@@ -5,7 +5,6 @@ use solana_sdk::hash::Hash;
 
 use solana_sdk::transaction::SanitizedTransaction;
 use solana_sdk::transaction::Transaction;
-use solana_sdk::transaction::TransactionError;
 
 use solana_svm::account_loader::CheckedTransactionDetails;
 use solana_svm::transaction_processor::ExecutionRecordingConfig;
@@ -74,7 +73,7 @@ impl TridentSVM {
     pub fn process_transaction_with_settle(
         &mut self,
         transaction: Transaction,
-    ) -> solana_sdk::transaction::Result<()> {
+    ) -> LoadAndExecuteSanitizedTransactionsOutput {
         let fee_structure = FeeStructure::default();
         let lamports_per_signature = fee_structure.lamports_per_signature;
 
@@ -115,7 +114,8 @@ impl TridentSVM {
 
         // create sanitized transaction
         let sanitezed_tx =
-            SanitizedTransaction::try_from_legacy_transaction(transaction, &HashSet::new())?;
+            SanitizedTransaction::try_from_legacy_transaction(transaction, &HashSet::new())
+                .expect("Trident SVM is not able to create sanitized transaction");
 
         // get fee structure
         let fee_structure = FeeStructure::default();
@@ -130,38 +130,28 @@ impl TridentSVM {
             &tx_processing_config,
         );
 
-        // TODO: Check why there is vector of Transaction results
-        // We process only one transaction here, so it might possible be always 1 ?
-        // TODO: Check if this is correct way to check if transaction was executed, potentially
-        // add support to process the whole vector
-        let execution_result = if result.execution_results.len() != 1 {
-            return Err(TransactionError::ProgramCacheHitMaxLimit);
-        } else {
-            &result.execution_results[0]
-        };
-
-        match &execution_result {
+        match &result.execution_results[0] {
             solana_svm::transaction_results::TransactionExecutionResult::Executed {
                 details,
                 ..
-            } => {
-                details
-                    .status
-                    .as_ref()
-                    .map_err(|transaction_error| transaction_error.clone())?;
-
-                match &result.loaded_transactions[0] {
+            } => match &details.status {
+                Ok(()) => match &result.loaded_transactions[0] {
                     Ok(loaded_transaction) => {
                         self.settle_accounts(&loaded_transaction.accounts);
-                        Ok(())
                     }
-                    Err(transaction_error) => Err(transaction_error.clone()),
+                    Err(_) => {}
+                },
+                Err(_transaction_error) => {
+                    // in case of transaction error, we don't need to do anything
                 }
-            }
+            },
             solana_svm::transaction_results::TransactionExecutionResult::NotExecuted(
-                transaction_error,
-            ) => Err(transaction_error.clone()),
+                _transaction_error,
+            ) => {
+                // in case of transaction error, we don't need to do anything
+            }
         }
+        result
     }
 }
 
