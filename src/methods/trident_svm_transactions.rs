@@ -14,8 +14,6 @@ use solana_svm::transaction_processor::TransactionProcessingEnvironment;
 
 use solana_compute_budget::compute_budget::ComputeBudget;
 
-use crate::log::setup_solana_logging;
-use crate::log::turn_off_solana_logging;
 use crate::trident_svm::TridentSVM;
 
 impl TridentSVM {
@@ -38,12 +36,8 @@ impl TridentSVM {
 
         let tx_processing_config = TransactionProcessingConfig {
             compute_budget: Some(ComputeBudget::default()),
-            log_messages_bytes_limit: Some(10 * 1000),
-            recording_config: ExecutionRecordingConfig {
-                enable_cpi_recording: true,
-                enable_log_recording: true,
-                enable_return_data_recording: true,
-            },
+            log_messages_bytes_limit: Some(20 * 1000),
+            recording_config: ExecutionRecordingConfig::new_single_setting(true),
             ..Default::default()
         };
 
@@ -87,24 +81,12 @@ impl TridentSVM {
             rent_collector: None,
         };
 
-        let mut tx_processing_config = TransactionProcessingConfig {
+        let tx_processing_config = TransactionProcessingConfig {
             compute_budget: Some(ComputeBudget::default()),
-            log_messages_bytes_limit: Some(10 * 1000),
-            recording_config: ExecutionRecordingConfig {
-                enable_cpi_recording: true,
-                enable_log_recording: true,
-                enable_return_data_recording: true,
-            },
+            log_messages_bytes_limit: Some(20 * 1000),
+            recording_config: ExecutionRecordingConfig::new_single_setting(true),
             ..Default::default()
         };
-
-        if std::env::var("TRIDENT_LOG").is_ok() {
-            setup_solana_logging();
-            tx_processing_config.recording_config.enable_log_recording = true;
-        } else {
-            turn_off_solana_logging();
-            tx_processing_config.recording_config.enable_log_recording = false;
-        }
 
         // reset sysvar cache
         self.processor.reset_sysvar_cache();
