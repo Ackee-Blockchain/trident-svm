@@ -185,7 +185,7 @@ impl TridentSVM {
         );
 
         self.deploy_binary_program(&spl_token);
-        
+
         // SPL Token 2022 added for new Token 2022 Trident features
         let spl_token_2022 = TridentProgram::new(
             pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
@@ -212,7 +212,7 @@ impl TridentSVM {
         self.deploy_binary_program(&metaplex_token_metadata);
 
         // Interesting to have an Oracle program for testing programs with Price feed manipulation
-        // Another good program would be Pyth Oracle, which is good for cross-chain price feeds 
+        // Another good program would be Pyth Oracle, which is good for cross-chain price feeds
         let chainlink_oracle = TridentProgram::new(
             pubkey!("HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny"),
             None,
