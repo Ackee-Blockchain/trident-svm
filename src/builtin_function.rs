@@ -1,7 +1,6 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use std::collections::HashMap;
-use std::sync::Once;
 
 use solana_sdk::transaction_context::IndexOfAccount;
 
@@ -14,8 +13,6 @@ use solana_rbpf::ebpf::HOST_ALIGN;
 
 use trident_syscall_stubs_v1::set_invoke_context as set_invoke_context_v1;
 use trident_syscall_stubs_v2::set_invoke_context as set_invoke_context_v2;
-
-static ONCE: Once = Once::new();
 
 #[macro_export]
 macro_rules! processor {
@@ -169,18 +166,6 @@ pub fn pre_invocation(
     ),
     Box<dyn std::error::Error>,
 > {
-    ONCE.call_once(|| {
-        if std::env::var("TRIDENT_LOG").is_ok() {
-            solana_logger::setup_with_default(
-                "solana_rbpf::vm=debug,\
-            solana_runtime::message_processor=debug,\
-            solana_runtime::system_instruction_processor=trace",
-            );
-        } else {
-            solana_logger::setup_with_default("off");
-        }
-    });
-
     set_invoke_context_v1(invoke_context);
     set_invoke_context_v2(invoke_context);
 

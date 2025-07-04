@@ -1,9 +1,9 @@
 mod accounts_database;
 mod builder;
-mod log;
 mod methods;
 mod native;
 mod trident_fork_graphs;
+pub mod trident_svm_log;
 mod utils;
 
 pub mod builtin_function;
@@ -24,5 +24,7 @@ pub mod processor {
 }
 
 pub mod prelude {
+    pub use super::trident_svm_log;
+    pub use log::Level;
     pub use solana_svm;
 }

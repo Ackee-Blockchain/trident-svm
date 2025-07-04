@@ -1,5 +1,5 @@
-use crate::log::{setup_solana_logging, turn_off_solana_logging};
 use crate::trident_svm::TridentSVM;
+use crate::trident_svm_log::{setup_cli_logging, setup_file_logging, turn_off_solana_logging};
 use crate::types::trident_account::TridentAccountSharedData;
 use crate::types::trident_entrypoint::TridentEntrypoint;
 use crate::types::trident_program::TridentProgram;
@@ -9,6 +9,7 @@ pub struct TridentSVMConfig {
     syscalls_v1: bool,
     syscalls_v2: bool,
     cli_logs: bool, // TODO, add better debbug levels
+    debug_file_logs: bool,
     program_entrypoints: Vec<TridentEntrypoint>,
     program_binaries: Vec<TridentProgram>,
     permanent_accounts: Vec<TridentAccountSharedData>,
@@ -56,6 +57,11 @@ impl TridentSVMBuilder {
         self
     }
 
+    pub fn with_debug_file_logs(&mut self) -> &Self {
+        self.config.debug_file_logs = true;
+        self
+    }
+
     pub fn build(&self) -> TridentSVM {
         let mut svm = TridentSVM::default();
 
@@ -67,7 +73,9 @@ impl TridentSVMBuilder {
         }
 
         if self.config.cli_logs {
-            setup_solana_logging();
+            setup_cli_logging();
+        } else if self.config.debug_file_logs {
+            setup_file_logging();
         } else {
             turn_off_solana_logging();
         }

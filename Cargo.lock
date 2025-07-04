@@ -3302,6 +3302,7 @@ name = "trident-svm"
 version = "0.0.3"
 dependencies = [
  "bincode",
+ "log",
  "serde",
  "solana-address-lookup-table-program",
  "solana-bpf-loader-program",
