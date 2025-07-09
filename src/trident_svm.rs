@@ -123,8 +123,8 @@ impl TridentSVM {
                 create_program_runtime_environment_v1(
                     &self.feature_set,
                     &compute_budget,
-                    true,
-                    true,
+                    false,
+                    false,
                 )
                 .unwrap(),
             );
