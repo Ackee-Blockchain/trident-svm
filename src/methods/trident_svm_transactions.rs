@@ -117,12 +117,11 @@ impl TridentSVM {
                 details,
                 ..
             } => match &details.status {
-                Ok(()) => match &result.loaded_transactions[0] {
-                    Ok(loaded_transaction) => {
+                Ok(()) => {
+                    if let Ok(loaded_transaction) = &result.loaded_transactions[0] {
                         self.settle_accounts(&loaded_transaction.accounts);
                     }
-                    Err(_) => {}
-                },
+                }
                 Err(_transaction_error) => {
                     // in case of transaction error, we don't need to do anything
                 }

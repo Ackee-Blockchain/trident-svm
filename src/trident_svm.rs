@@ -32,7 +32,10 @@ use solana_sdk::feature_set::FeatureSet;
 
 use solana_svm::transaction_processing_callback::TransactionProcessingCallback;
 use solana_svm::transaction_processor::TransactionBatchProcessor;
+
+#[cfg(feature = "syscall-v1")]
 use trident_syscall_stubs_v1::set_stubs_v1;
+#[cfg(feature = "syscall-v2")]
 use trident_syscall_stubs_v2::set_stubs_v2;
 
 use crate::accounts_database::accounts_db::AccountsDB;
@@ -52,10 +55,12 @@ pub struct TridentSVM {
 }
 
 impl TridentSVM {
+    #[cfg(feature = "syscall-v1")]
     pub(crate) fn initialize_syscalls_v1(&mut self) {
         set_stubs_v1();
     }
 
+    #[cfg(feature = "syscall-v2")]
     pub(crate) fn initialize_syscalls_v2(&mut self) {
         set_stubs_v2();
     }

@@ -1,17 +1,16 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
-use std::collections::HashMap;
-
-use solana_sdk::transaction_context::IndexOfAccount;
-
 use solana_bpf_loader_program::serialization::serialize_parameters;
-
 use solana_program_runtime::invoke_context::InvokeContext;
+use solana_sdk::transaction_context::IndexOfAccount;
+use std::collections::HashMap;
 
 use solana_rbpf::aligned_memory::AlignedMemory;
 use solana_rbpf::ebpf::HOST_ALIGN;
 
+#[cfg(feature = "syscall-v1")]
 use trident_syscall_stubs_v1::set_invoke_context as set_invoke_context_v1;
+#[cfg(feature = "syscall-v2")]
 use trident_syscall_stubs_v2::set_invoke_context as set_invoke_context_v2;
 
 #[macro_export]
@@ -166,7 +165,9 @@ pub fn pre_invocation(
     ),
     Box<dyn std::error::Error>,
 > {
+    #[cfg(feature = "syscall-v1")]
     set_invoke_context_v1(invoke_context);
+    #[cfg(feature = "syscall-v2")]
     set_invoke_context_v2(invoke_context);
 
     let transaction_context = &invoke_context.transaction_context;

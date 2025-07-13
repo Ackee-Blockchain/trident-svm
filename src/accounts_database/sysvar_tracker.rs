@@ -52,8 +52,7 @@ mod tests {
         let diff = (updated_clock.unix_timestamp - initial_timestamp) as u64;
         assert!(
             (1..=3).contains(&diff),
-            "Clock update difference should be ~2 seconds, got {}",
-            diff
+            "Clock update difference should be ~2 seconds, got {diff}"
         );
     }
 

@@ -3,14 +3,15 @@ use solana_sdk::account::WritableAccount;
 use solana_sdk::bpf_loader_upgradeable;
 use solana_sdk::bpf_loader_upgradeable::UpgradeableLoaderState;
 
-use solana_sdk::native_loader;
+#[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
+use {
+    crate::types::trident_entrypoint::TridentEntrypoint,
+    solana_program_runtime::loaded_programs::ProgramCacheEntry, solana_sdk::native_loader,
+};
 
 use solana_sdk::rent::Rent;
 
-use solana_program_runtime::loaded_programs::ProgramCacheEntry;
-
 use crate::trident_svm::TridentSVM;
-use crate::types::trident_entrypoint::TridentEntrypoint;
 use crate::types::trident_program::TridentProgram;
 
 impl TridentSVM {
@@ -67,6 +68,7 @@ impl TridentSVM {
             .set_program(&program_data_account, &account_data);
     }
 
+    #[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
     pub fn deploy_entrypoint_program(&mut self, program: &TridentEntrypoint) {
         let entry = match program.entry {
             Some(entry) => entry,
