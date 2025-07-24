@@ -1,5 +1,5 @@
 pub fn log_message(message: &str, level: log::Level) {
-    log::log!(level, "{}", message);
+    log::log!(level, "{message}",);
 }
 
 pub(crate) fn setup_cli_logging() {
