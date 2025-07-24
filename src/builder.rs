@@ -1,5 +1,7 @@
 use crate::trident_svm::TridentSVM;
-use crate::trident_svm_log::{setup_cli_logging, setup_file_logging, turn_off_solana_logging};
+use crate::trident_svm_log::setup_cli_logging;
+use crate::trident_svm_log::setup_file_logging;
+use crate::trident_svm_log::turn_off_solana_logging;
 use crate::types::trident_account::TridentAccountSharedData;
 #[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
 use crate::types::trident_entrypoint::TridentEntrypoint;

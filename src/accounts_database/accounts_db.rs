@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
 use serde::de::DeserializeOwned;
-use solana_sdk::account::{AccountSharedData, ReadableAccount};
+use solana_sdk::account::AccountSharedData;
+use solana_sdk::account::ReadableAccount;
 use solana_sdk::clock::Clock;
 use solana_sdk::pubkey::Pubkey;
-use solana_sdk::sysvar::{Sysvar, SysvarId};
+use solana_sdk::sysvar::Sysvar;
+use solana_sdk::sysvar::SysvarId;
 
 use super::sysvar_tracker::SysvarTracker;
 

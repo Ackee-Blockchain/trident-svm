@@ -4,10 +4,11 @@ use solana_sdk::bpf_loader_upgradeable;
 use solana_sdk::bpf_loader_upgradeable::UpgradeableLoaderState;
 
 #[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
-use {
-    crate::types::trident_entrypoint::TridentEntrypoint,
-    solana_program_runtime::loaded_programs::ProgramCacheEntry, solana_sdk::native_loader,
-};
+use crate::types::trident_entrypoint::TridentEntrypoint;
+#[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
+use solana_program_runtime::loaded_programs::ProgramCacheEntry;
+#[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
+use solana_sdk::native_loader;
 
 use solana_sdk::rent::Rent;
 
