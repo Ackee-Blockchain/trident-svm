@@ -10,12 +10,9 @@ pub(crate) fn setup_cli_logging() {
     );
 }
 
-pub(crate) fn setup_file_logging() {
-    // Remove the log file if it exists to start fresh
-    let _ = std::fs::remove_file("trident_svm.log");
-
+pub(crate) fn setup_file_logging(path: &str) {
     solana_logger::setup_file_with_default(
-        "trident_svm.log",
+        path,
         "solana_rbpf::vm=debug,\
             solana_runtime::message_processor=debug,\
             solana_runtime::system_instruction_processor=trace,\

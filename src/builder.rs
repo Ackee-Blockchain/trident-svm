@@ -12,7 +12,7 @@ pub struct TridentSVMConfig {
     syscalls_v1: bool,
     syscalls_v2: bool,
     cli_logs: bool, // TODO, add better debbug levels
-    debug_file_logs: bool,
+    debug_file_logs: Option<String>,
     #[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
     program_entrypoints: Vec<TridentEntrypoint>,
     program_binaries: Vec<TridentProgram>,
@@ -62,8 +62,8 @@ impl TridentSVMBuilder {
         self
     }
 
-    pub fn with_debug_file_logs(&mut self) -> &Self {
-        self.config.debug_file_logs = true;
+    pub fn with_debug_file_logs(&mut self, path: &str) -> &Self {
+        self.config.debug_file_logs = Some(path.to_string());
         self
     }
 
@@ -81,8 +81,8 @@ impl TridentSVMBuilder {
 
         if self.config.cli_logs {
             setup_cli_logging();
-        } else if self.config.debug_file_logs {
-            setup_file_logging();
+        } else if let Some(path) = &self.config.debug_file_logs {
+            setup_file_logging(path);
         } else {
             turn_off_solana_logging();
         }
