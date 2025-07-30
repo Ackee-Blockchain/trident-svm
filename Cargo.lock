@@ -3294,7 +3294,7 @@ dependencies = [
 
 [[package]]
 name = "trident-svm"
-version = "0.0.4-rc.3"
+version = "0.0.4-rc.4"
 dependencies = [
  "bincode",
  "log",
