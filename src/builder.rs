@@ -3,7 +3,7 @@ use crate::trident_svm_log::setup_cli_logging;
 use crate::trident_svm_log::setup_file_logging;
 use crate::trident_svm_log::turn_off_solana_logging;
 use crate::types::trident_account::TridentAccountSharedData;
-#[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
+#[cfg(feature = "syscall-v2")]
 use crate::types::trident_entrypoint::TridentEntrypoint;
 use crate::types::trident_program::TridentProgram;
 
@@ -13,7 +13,7 @@ pub struct TridentSVMConfig {
     syscalls_v2: bool,
     cli_logs: bool, // TODO, add better debbug levels
     debug_file_logs: Option<String>,
-    #[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
+    #[cfg(feature = "syscall-v2")]
     program_entrypoints: Vec<TridentEntrypoint>,
     program_binaries: Vec<TridentProgram>,
     permanent_accounts: Vec<TridentAccountSharedData>,
@@ -41,7 +41,7 @@ impl TridentSVMBuilder {
         self
     }
 
-    #[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
+    #[cfg(feature = "syscall-v2")]
     pub fn with_program_entries(&mut self, entries: Vec<TridentEntrypoint>) -> &Self {
         self.config.program_entrypoints = entries;
         self
@@ -70,10 +70,6 @@ impl TridentSVMBuilder {
     pub fn build(&self) -> TridentSVM {
         let mut svm = TridentSVM::default();
 
-        #[cfg(feature = "syscall-v1")]
-        if self.config.syscalls_v1 {
-            svm.initialize_syscalls_v1();
-        }
         #[cfg(feature = "syscall-v2")]
         if self.config.syscalls_v2 {
             svm.initialize_syscalls_v2();
@@ -87,7 +83,7 @@ impl TridentSVMBuilder {
             turn_off_solana_logging();
         }
 
-        #[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
+        #[cfg(feature = "syscall-v2")]
         for entry in &self.config.program_entrypoints {
             svm.deploy_entrypoint_program(entry);
         }

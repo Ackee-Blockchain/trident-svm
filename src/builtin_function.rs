@@ -1,15 +1,13 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
-use solana_bpf_loader_program::serialization::serialize_parameters;
 use solana_program_runtime::invoke_context::InvokeContext;
-use solana_sdk::transaction_context::IndexOfAccount;
+use solana_program_runtime::serialization::serialize_parameters;
+use solana_transaction_context::IndexOfAccount;
 use std::collections::HashMap;
 
-use solana_rbpf::aligned_memory::AlignedMemory;
-use solana_rbpf::ebpf::HOST_ALIGN;
+use solana_sbpf::aligned_memory::AlignedMemory;
+use solana_sbpf::ebpf::HOST_ALIGN;
 
-#[cfg(feature = "syscall-v1")]
-use trident_syscall_stubs_v1::set_invoke_context as set_invoke_context_v1;
 #[cfg(feature = "syscall-v2")]
 use trident_syscall_stubs_v2::set_invoke_context as set_invoke_context_v2;
 
@@ -19,9 +17,9 @@ macro_rules! processor {
         Some(|vm, _arg0, _arg1, _arg2, _arg3, _arg4| {
             let vm = unsafe {
                 &mut *((vm as *mut u64).offset(
-                    -($crate::processor::solana_rbpf::vm::get_runtime_environment_key() as isize),
+                    -($crate::processor::solana_sbpf::vm::get_runtime_environment_key() as isize),
                 )
-                    as *mut $crate::processor::solana_rbpf::vm::EbpfVm<
+                    as *mut $crate::processor::solana_sbpf::vm::EbpfVm<
                         $crate::processor::solana_program_runtime::invoke_context::InvokeContext,
                     >)
             };
@@ -33,7 +31,7 @@ macro_rules! processor {
                     Err(err) => {
                         vm.program_result = Err(err)
                             .map_err(|err| {
-                                $crate::processor::solana_rbpf::error::EbpfError::SyscallError(err)
+                                $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
                             })
                             .into();
                         return;
@@ -99,7 +97,7 @@ macro_rules! processor {
                         {
                             vm.program_result = Err(err)
                                 .map_err(|err| {
-                                    $crate::processor::solana_rbpf::error::EbpfError::SyscallError(err)
+                                    $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
                                 }).into();
                         }
                         return;
@@ -119,7 +117,7 @@ macro_rules! processor {
                     {
                         vm.program_result = Err(err)
                             .map_err(|err| {
-                                $crate::processor::solana_rbpf::error::EbpfError::SyscallError(err)
+                                $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
                             })
                             .into();
                     }
@@ -146,7 +144,7 @@ macro_rules! processor {
                 Err(err) => {
                     vm.program_result = Err(err)
                         .map_err(|err| {
-                            $crate::processor::solana_rbpf::error::EbpfError::SyscallError(err)
+                            $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
                         })
                         .into();
                     return;
@@ -165,8 +163,6 @@ pub fn pre_invocation(
     ),
     Box<dyn std::error::Error>,
 > {
-    #[cfg(feature = "syscall-v1")]
-    set_invoke_context_v1(invoke_context);
     #[cfg(feature = "syscall-v2")]
     set_invoke_context_v2(invoke_context);
 
@@ -180,7 +176,7 @@ pub fn pre_invocation(
         instruction_account_indices.collect();
 
     let (parameter_bytes, _regions, _account_lengths) =
-        serialize_parameters(transaction_context, instruction_context, true)?;
+        serialize_parameters(transaction_context, instruction_context, true, true)?;
 
     Ok((parameter_bytes, deduplicated_indices))
 }

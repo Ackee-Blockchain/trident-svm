@@ -1,4 +1,4 @@
-use solana_sdk::clock::Clock;
+use solana_sysvar::clock::Clock;
 
 use crate::utils::get_current_timestamp;
 
@@ -29,7 +29,7 @@ mod tests {
     use std::thread::sleep;
     use std::time::Duration;
 
-    use solana_sdk::clock::Clock;
+    use solana_sysvar::clock::Clock;
 
     use crate::accounts_database::accounts_db::AccountsDB;
 

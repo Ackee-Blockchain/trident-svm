@@ -1,7 +1,6 @@
+use solana_clock::Slot;
 use solana_program_runtime::loaded_programs::BlockRelation;
 use solana_program_runtime::loaded_programs::ForkGraph;
-
-use solana_sdk::clock::Slot;
 
 pub struct TridentForkGraph {}
 

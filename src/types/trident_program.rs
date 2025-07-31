@@ -1,4 +1,4 @@
-use solana_sdk::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
 
 pub struct TridentProgram {
     pub(crate) program_id: Pubkey,

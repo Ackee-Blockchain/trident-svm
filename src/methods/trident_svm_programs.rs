@@ -1,16 +1,12 @@
-use solana_sdk::account::AccountSharedData;
-use solana_sdk::account::WritableAccount;
-use solana_sdk::bpf_loader_upgradeable;
-use solana_sdk::bpf_loader_upgradeable::UpgradeableLoaderState;
+use solana_account::AccountSharedData;
+use solana_account::WritableAccount;
+use solana_loader_v3_interface::state::UpgradeableLoaderState;
+use solana_sysvar::rent::Rent;
 
-#[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
+#[cfg(feature = "syscall-v2")]
 use crate::types::trident_entrypoint::TridentEntrypoint;
-#[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
+#[cfg(feature = "syscall-v2")]
 use solana_program_runtime::loaded_programs::ProgramCacheEntry;
-#[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
-use solana_sdk::native_loader;
-
-use solana_sdk::rent::Rent;
 
 use crate::trident_svm::TridentSVM;
 use crate::types::trident_program::TridentProgram;
@@ -22,7 +18,7 @@ impl TridentSVM {
         let program_account = &program.program_id;
 
         let program_data_account =
-            bpf_loader_upgradeable::get_program_data_address(program_account);
+            solana_loader_v3_interface::get_program_data_address(program_account);
 
         let state = UpgradeableLoaderState::Program {
             programdata_address: program_data_account,
@@ -32,7 +28,7 @@ impl TridentSVM {
         let account_data = AccountSharedData::create(
             rent.minimum_balance(buffer.len()),
             buffer,
-            bpf_loader_upgradeable::id(),
+            solana_sdk_ids::bpf_loader_upgradeable::id(),
             true,
             Default::default(),
         );
@@ -60,7 +56,7 @@ impl TridentSVM {
         let account_data = AccountSharedData::create(
             rent.minimum_balance(header.len()),
             header,
-            bpf_loader_upgradeable::id(),
+            solana_sdk_ids::bpf_loader_upgradeable::id(),
             true,
             Default::default(),
         );
@@ -69,8 +65,10 @@ impl TridentSVM {
             .set_program(&program_data_account, &account_data);
     }
 
-    #[cfg(any(feature = "syscall-v1", feature = "syscall-v2"))]
+    #[cfg(feature = "syscall-v2")]
     pub fn deploy_entrypoint_program(&mut self, program: &TridentEntrypoint) {
+        use crate::utils::create_loadable_account_for_test;
+
         let entry = match program.entry {
             Some(entry) => entry,
             None => panic!("Native programs have to have entry specified"),
@@ -78,11 +76,11 @@ impl TridentSVM {
 
         self.accounts.set_program(
             &program.program_id,
-            &native_loader::create_loadable_account_for_test("program-name"),
+            &create_loadable_account_for_test("program-name"),
         );
 
         let program_data_account =
-            bpf_loader_upgradeable::get_program_data_address(&program.program_id);
+            solana_loader_v3_interface::get_program_data_address(&program.program_id);
 
         let state = UpgradeableLoaderState::ProgramData {
             slot: 0,
@@ -107,7 +105,7 @@ impl TridentSVM {
         let account_data = AccountSharedData::create(
             rent.minimum_balance(header.len()),
             header,
-            bpf_loader_upgradeable::id(),
+            solana_sdk_ids::bpf_loader_upgradeable::id(),
             true,
             Default::default(),
         );
