@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 use serde::de::DeserializeOwned;
-use solana_sdk::account::AccountSharedData;
-use solana_sdk::account::ReadableAccount;
-use solana_sdk::clock::Clock;
-use solana_sdk::pubkey::Pubkey;
-use solana_sdk::sysvar::Sysvar;
-use solana_sdk::sysvar::SysvarId;
+use solana_account::AccountSharedData;
+use solana_account::ReadableAccount;
+use solana_pubkey::Pubkey;
+use solana_sysvar::clock::Clock;
+use solana_sysvar::Sysvar;
+use solana_sysvar_id::SysvarId;
 
 use super::sysvar_tracker::SysvarTracker;
 
@@ -58,7 +58,8 @@ impl AccountsDB {
         let _ = self.programs.insert(pubkey.to_owned(), account.to_owned());
     }
     pub(crate) fn set_sysvar<T: Sysvar + SysvarId>(&mut self, sysvar: &T) {
-        let account = AccountSharedData::new_data(1, &sysvar, &solana_sdk::sysvar::id()).unwrap();
+        let account =
+            AccountSharedData::new_data(1, &sysvar, &solana_sdk_ids::sysvar::id()).unwrap();
         let _ = self.sysvars.insert(T::id(), account);
 
         if T::id() == Clock::id() {

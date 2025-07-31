@@ -1,6 +1,6 @@
 use solana_program_runtime::invoke_context::BuiltinFunctionWithContext;
 
-use solana_sdk::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
 
 pub struct TridentEntrypoint {
     pub(crate) program_id: Pubkey,

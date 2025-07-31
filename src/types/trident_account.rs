@@ -1,5 +1,5 @@
-use solana_sdk::account::AccountSharedData;
-use solana_sdk::pubkey::Pubkey;
+use solana_account::AccountSharedData;
+use solana_pubkey::Pubkey;
 
 pub struct TridentAccountSharedData {
     pub address: Pubkey,

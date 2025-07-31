@@ -1,47 +1,50 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-use solana_program_runtime::loaded_programs::ProgramCacheEntry;
-use solana_sdk::account::AccountSharedData;
-use solana_sdk::account::ReadableAccount;
-use solana_sdk::clock::Clock;
-use solana_sdk::epoch_rewards::EpochRewards;
-use solana_sdk::epoch_schedule::EpochSchedule;
-use solana_sdk::hash::Hash;
-use solana_sdk::native_loader;
-use solana_sdk::native_token::LAMPORTS_PER_SOL;
-use solana_sdk::pubkey;
-use solana_sdk::pubkey::Pubkey;
-use solana_sdk::rent::Rent;
-use solana_sdk::signature::Keypair;
-use solana_sdk::signer::Signer;
-use solana_sdk::slot_hashes::SlotHashes;
-use solana_sdk::slot_history::SlotHistory;
-use solana_sdk::stake_history::StakeHistory;
-#[allow(deprecated)]
-use solana_sdk::sysvar::fees::Fees;
-#[allow(deprecated)]
-use solana_sdk::sysvar::recent_blockhashes::IterItem;
-#[allow(deprecated)]
-use solana_sdk::sysvar::recent_blockhashes::RecentBlockhashes;
-
 use solana_bpf_loader_program::syscalls::create_program_runtime_environment_v1;
-use solana_compute_budget::compute_budget::ComputeBudget;
-use solana_sdk::feature_set::FeatureSet;
+use solana_bpf_loader_program::syscalls::create_program_runtime_environment_v2;
+
+use solana_program_runtime::loaded_programs::ProgramCacheEntry;
+
+use solana_account::AccountSharedData;
+use solana_account::ReadableAccount;
+use solana_clock::Clock;
+use solana_epoch_rewards::EpochRewards;
+use solana_epoch_schedule::EpochSchedule;
+use solana_hash::Hash;
+use solana_keypair::Keypair;
+use solana_pubkey::pubkey;
+use solana_pubkey::Pubkey;
+use solana_rent::Rent;
+use solana_signer::Signer;
+use solana_slot_hashes::SlotHashes;
+use solana_svm_feature_set::SVMFeatureSet;
+#[allow(deprecated)]
+use solana_sysvar::fees::Fees;
+#[allow(deprecated)]
+use solana_sysvar::recent_blockhashes::IterItem;
+#[allow(deprecated)]
+use solana_sysvar::recent_blockhashes::RecentBlockhashes;
+
+use solana_slot_history::SlotHistory;
+
+use solana_stake_interface::stake_history::StakeHistory;
 
 use solana_svm::transaction_processing_callback::TransactionProcessingCallback;
 use solana_svm::transaction_processor::TransactionBatchProcessor;
 
-#[cfg(feature = "syscall-v1")]
-use trident_syscall_stubs_v1::set_stubs_v1;
+use solana_svm_callback::InvokeContextCallback;
 #[cfg(feature = "syscall-v2")]
 use trident_syscall_stubs_v2::set_stubs_v2;
 
 use crate::accounts_database::accounts_db::AccountsDB;
 use crate::builder::TridentSVMBuilder;
-use crate::native::BUILTINS;
+
 use crate::trident_fork_graphs::TridentForkGraph;
+use crate::utils;
+use solana_builtins::BUILTINS;
+
+use solana_program_runtime::execution_budget::SVMTransactionExecutionBudget;
 
 use crate::types::trident_program::TridentProgram;
 use crate::utils::get_current_timestamp;
@@ -49,22 +52,19 @@ use crate::utils::get_current_timestamp;
 pub struct TridentSVM {
     pub(crate) accounts: AccountsDB,
     pub(crate) payer: Keypair,
-    pub(crate) feature_set: Arc<FeatureSet>,
+    pub(crate) feature_set: Arc<SVMFeatureSet>,
     pub(crate) processor: TransactionBatchProcessor<TridentForkGraph>,
     pub(crate) fork_graph: Arc<RwLock<TridentForkGraph>>,
 }
 
 impl TridentSVM {
-    #[cfg(feature = "syscall-v1")]
-    pub(crate) fn initialize_syscalls_v1(&mut self) {
-        set_stubs_v1();
-    }
-
     #[cfg(feature = "syscall-v2")]
     pub(crate) fn initialize_syscalls_v2(&mut self) {
         set_stubs_v2();
     }
 }
+
+impl InvokeContextCallback for TridentSVM {}
 
 impl TransactionProcessingCallback for TridentSVM {
     fn account_matches_owners(&self, account: &Pubkey, owners: &[Pubkey]) -> Option<usize> {
@@ -72,10 +72,7 @@ impl TransactionProcessingCallback for TridentSVM {
             .and_then(|account| owners.iter().position(|key| account.owner().eq(key)))
     }
 
-    fn get_account_shared_data(
-        &self,
-        pubkey: &Pubkey,
-    ) -> Option<solana_sdk::account::AccountSharedData> {
+    fn get_account_shared_data(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
         self.accounts.get_account(pubkey)
     }
 }
@@ -87,15 +84,21 @@ impl Default for TridentSVM {
         let mut client = Self {
             accounts: Default::default(),
             payer: payer.insecure_clone(),
-            feature_set: Arc::new(FeatureSet::all_enabled()),
-            processor: TransactionBatchProcessor::<TridentForkGraph>::new(1, 1, HashSet::default()),
+            feature_set: Arc::new(SVMFeatureSet::default()),
+            processor: TransactionBatchProcessor::<TridentForkGraph>::new(
+                1,
+                1,
+                Arc::downgrade(&Arc::new(RwLock::new(TridentForkGraph {}))),
+                None,
+                None,
+            ),
             fork_graph: Arc::new(RwLock::new(TridentForkGraph {})),
         };
 
         let payer_account = AccountSharedData::new(
-            500_000_000 * LAMPORTS_PER_SOL,
+            500_000_000 * 1_000_000_000,
             0,
-            &solana_sdk::system_program::ID,
+            &solana_sdk_ids::system_program::id(),
         );
         client
             .accounts
@@ -115,12 +118,16 @@ impl TridentSVM {
     }
     fn with_processor(self) -> Self {
         {
-            let compute_budget = ComputeBudget::default();
+            let compute_budget = SVMTransactionExecutionBudget::default();
 
             let mut cache: std::sync::RwLockWriteGuard<
                 '_,
                 solana_program_runtime::loaded_programs::ProgramCache<TridentForkGraph>,
-            > = self.processor.program_cache.write().unwrap();
+            > = self
+                .processor
+                .program_cache
+                .write()
+                .expect("Failed to write to program cache");
 
             cache.fork_graph = Some(Arc::downgrade(&self.fork_graph));
 
@@ -131,10 +138,10 @@ impl TridentSVM {
                     false,
                     false,
                 )
-                .unwrap(),
+                .expect("Failed to create program runtime environment"),
             );
-            // cache.environments.program_runtime_v2 =
-            //     Arc::new(create_program_runtime_environment_v2(&compute_budget, true));
+            cache.environments.program_runtime_v2 =
+                Arc::new(create_program_runtime_environment_v2(&compute_budget, true));
         }
 
         self
@@ -169,7 +176,7 @@ impl TridentSVM {
         BUILTINS.iter().for_each(|builtint| {
             self.accounts.set_program(
                 &builtint.program_id,
-                &native_loader::create_loadable_account_for_test(builtint.name),
+                &utils::create_loadable_account_for_test(builtint.name),
             );
 
             self.processor.add_builtin(

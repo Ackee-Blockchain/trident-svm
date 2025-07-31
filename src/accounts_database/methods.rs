@@ -1,9 +1,8 @@
-use solana_sdk::account::AccountSharedData;
-use solana_sdk::account::ReadableAccount;
-
-use solana_sdk::clock::Clock;
-use solana_sdk::pubkey::Pubkey;
-use solana_sdk::sysvar::SysvarId;
+use solana_account::AccountSharedData;
+use solana_account::ReadableAccount;
+use solana_pubkey::Pubkey;
+use solana_sysvar::clock::Clock;
+use solana_sysvar_id::SysvarId;
 
 use super::accounts_db::AccountsDB;
 
