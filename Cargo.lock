@@ -4530,6 +4530,7 @@ version = "0.0.4-rc.1"
 dependencies = [
  "agave-feature-set",
  "bincode",
+ "log",
  "serde",
  "serde_json",
  "shared_memory",
@@ -4540,6 +4541,7 @@ dependencies = [
  "solana-config-program",
  "solana-loader-v4-program",
  "solana-logger",
+ "solana-program",
  "solana-program-runtime",
  "solana-sbpf",
  "solana-sdk",

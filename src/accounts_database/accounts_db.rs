@@ -5,7 +5,7 @@ use solana_sdk::account::{AccountSharedData, ReadableAccount};
 use solana_sdk::clock::Clock;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::sysvar::{Sysvar, SysvarId};
-
+use solana_program;
 use super::sysvar_tracker::SysvarTracker;
 
 #[derive(Default)]
@@ -18,6 +18,7 @@ pub struct AccountsDB {
 }
 
 impl AccountsDB {
+
     pub(crate) fn get_temporary_account(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
         self.accounts.get(pubkey).map(|acc| acc.to_owned())
     }
@@ -34,12 +35,22 @@ impl AccountsDB {
     }
     pub(crate) fn get_sysvar<T: SysvarId + DeserializeOwned>(&self) -> T {
         if T::id() == Clock::id() {
+            // keep your existing behavior; assumed to advance clock in storage
             self.update_clock();
         }
-        let sysvar = self
-            .get_sysvar_account(&T::id())
-            .expect("The requested sysvar is not available");
-        bincode::deserialize(sysvar.data()).expect("Failed to deserialize sysvar account")
+
+        let id = T::id();
+        let Some(sysvar_acc) = self.get_sysvar_account(&id) else {
+            eprintln!(
+                "[sysvar] MISS type={} id={}",
+                std::any::type_name::<T>(),
+                id
+            );
+            panic!("The requested sysvar is not available: {}", id);
+        };
+
+        bincode::deserialize(sysvar_acc.data())
+            .expect("Failed to deserialize sysvar account")
     }
 }
 

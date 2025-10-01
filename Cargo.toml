@@ -3,7 +3,7 @@ name = "trident-svm"
 authors = ["Ackee Blockchain Security <hello@ackee.xyz>"]
 version = "0.0.4-rc.1"
 edition = "2021"
-repository = "https://github.com/Ackee-Blockchain/trident-svm"
+#repository = "https://github.com/Ackee-Blockchain/trident-svm"
 license-file = "./LICENSE"
 readme = "./README.md"
 description = "Trident SVM implementation by Ackee Blockchain Security"
@@ -17,11 +17,12 @@ description = "Trident SVM implementation by Ackee Blockchain Security"
 # Solana
 solana-sdk = "2.2"
 agave-feature-set = "2.2"
-solana-program-runtime = "2.2"
+solana-program-runtime = "=2.2.7"
 solana-sbpf = "0.10.0"
 
 # Programs
 solana-system-program = "2.2"
+solana-program = "2.2"
 solana-bpf-loader-program = "2.2"
 solana-vote-program = "2.2"
 solana-stake-program = "2.2"
@@ -40,7 +41,7 @@ serde = { version = "1", default-features = false }
 bincode = "1.3"
 serde_json = "1.0"
 shared_memory = "0.12"
-
+log = "0.4"
 # !!!!
 # We will not be able to execute programs that use solana < 2
 # Syscall stubs
@@ -49,3 +50,4 @@ shared_memory = "0.12"
 
 [dependencies.trident-syscall-stubs-v2]
 version = "0.0.2-rc.1"
+#path = "../trident-syscall-stubs/trident-syscall-stubs-v2"

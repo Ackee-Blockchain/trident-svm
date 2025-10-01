@@ -3,41 +3,73 @@
 use std::collections::HashMap;
 use std::sync::Once;
 
-use solana_sdk::transaction_context::IndexOfAccount;
+use solana_sdk::{program_error::PrintProgramError, transaction_context::IndexOfAccount};
 
 use solana_bpf_loader_program::serialization::serialize_parameters;
-
+use trident_syscall_stubs_v2::TridentSyscallStubs;
 use solana_program_runtime::invoke_context::InvokeContext;
-
-// use solana_rbpf::aligned_memory::AlignedMemory;
-// use solana_rbpf::ebpf::HOST_ALIGN;
-
 use solana_sbpf::aligned_memory::AlignedMemory;
 use solana_sbpf::ebpf::HOST_ALIGN;
-
 // use trident_syscall_stubs_v1::set_invoke_context as set_invoke_context_v1;
 use trident_syscall_stubs_v2::set_invoke_context as set_invoke_context_v2;
+use std::panic;
+use solana_sdk::sysvar::{
 
+    rent::Rent,
+    epoch_schedule::EpochSchedule,
+    fees::Fees,
+    slot_hashes::SlotHashes,
+    slot_history::SlotHistory,
+    stake_history::StakeHistory,
+    Sysvar, // for defaults if needed
+};
+use solana_program_runtime::sysvar_cache::SysvarCache; // ok to keep, even if unused directly
+use solana_sdk::{sysvar::{instructions::Instructions, SysvarId}};
+use solana_sdk::clock::Clock;
+  // This imports the module from sysvar_bridge.rs
+
+use solana_program::{example_mocks::solana_sdk::sysvar, program_stubs::SyscallStubs};
 static ONCE: Once = Once::new();
 
 #[macro_export]
 macro_rules! processor {
-    ($builtin_function:expr) => {
-        Some(|vm, _arg0, _arg1, _arg2, _arg3, _arg4| {
-            let vm = unsafe {
-                &mut *((vm as *mut u64).offset(
-                    -($crate::processor::solana_sbpf::vm::get_runtime_environment_key() as isize),
-                )
-                    as *mut $crate::processor::solana_sbpf::vm::EbpfVm<
-                        $crate::processor::solana_program_runtime::invoke_context::InvokeContext,
-                    >)
+    ($builtin_function:path) => {{
+        #[allow(non_snake_case)]
+        #[inline(always)]
+        fn __trident_entry_shim<'a>(
+            vm: *mut $crate::processor::solana_sbpf::vm::EbpfVm<
+                'a,
+                $crate::processor::solana_program_runtime::invoke_context::InvokeContext<'static>
+            >,
+            _arg0: u64, _arg1: u64, _arg2: u64, _arg3: u64, _arg4: u64
+        ) {
+            eprintln!("[processor] ENTER");
+
+            // Rebase VM pointer (sbpf runtime env layout)
+            let vm: &mut $crate::processor::solana_sbpf::vm::EbpfVm<
+                'a,
+                $crate::processor::solana_program_runtime::invoke_context::InvokeContext<'static>
+            > = unsafe {
+                let base = vm as *mut u64;
+                let key = $crate::processor::solana_sbpf::vm::get_runtime_environment_key() as isize;
+                let rebased = base.offset(-key) as *mut $crate::processor::solana_sbpf::vm::EbpfVm<
+                    'a,
+                    $crate::processor::solana_program_runtime::invoke_context::InvokeContext<'static>
+                >;
+                eprintln!("[processor] Rebasing VM ptr by -{}", key);
+                &mut *rebased
             };
 
-            ///Prior Invocation
+            // --- Prior Invocation ---
+            eprintln!("[processor] pre_invocation()");
             let (mut parameter_bytes, deduplicated_indices) =
                 match $crate::processor::pre_invocation(vm.context_object_pointer) {
-                    Ok(parameter_bytes) => parameter_bytes,
+                    Ok(pair) => {
+                        eprintln!("[processor] pre_invocation OK");
+                        pair
+                    }
                     Err(err) => {
+                        eprintln!("[processor] pre_invocation ERROR: {:?}", err);
                         vm.program_result = Err(err)
                             .map_err(|err| {
                                 $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
@@ -47,110 +79,55 @@ macro_rules! processor {
                     }
                 };
 
-            ///Get log collector
             let log_collector = vm.context_object_pointer.get_log_collector();
 
-            ///Deserialize parameter bytes
+            // Deserialize call params
+            eprintln!("[processor] deserialize()");
             let (program_id_, account_infos, data) = unsafe {
                 $crate::processor::deserialize(&mut parameter_bytes.as_slice_mut()[0] as *mut u8)
             };
+            eprintln!(
+                "[processor] deserialize OK: accounts={}, data={}",
+                account_infos.len(),
+                data.len()
+            );
 
-            ///Convert program_id_ to Pubkey of correct solana program version
-            /// The type is inferred by the compiler/
-            let program_id = unsafe {
-                std::mem::transmute::<
-                    &$crate::processor::Pubkey,
-                    &_,
-                >(&program_id_)
-            };
-            ///Convert account_infos to Vec<AccountInfo> of correct solana program version
-            /// The type is inferred by the compiler/
-            let account_infos = unsafe {
-                std::mem::transmute::<
-                    &[$crate::processor::account_info::AccountInfo<'_>],
-                    &_,
-                >(&account_infos)
-            };
-            ///Log program invoke
+            // Same-crate types (no transmutes)
+            let program_id: &$crate::processor::Pubkey = &program_id_;
+            let account_infos: &[$crate::processor::account_info::AccountInfo<'_>] = &account_infos;
+
             $crate::processor::stable_log::program_invoke(
                 &log_collector,
                 &program_id_,
                 vm.context_object_pointer.get_stack_height(),
             );
-            ///Invoke builtin function
+
+            eprintln!("[processor] call user entry");
             match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 $builtin_function(program_id, account_infos, data)
             })) {
-                Ok(program_result) => match program_result {
-                    ///In case of success, set program result to Ok(0), log success and continue
-                    Ok(_) => {
-                        ///Log program success
-                        $crate::processor::stable_log::program_success(&log_collector, &program_id_);
-
-                        ///Set program result to Ok(0)
-                        {
-                            vm.program_result = Ok(0).into();
-                        }
-                    }
-                    ///In case of error, set program result to error, log failure and return
-                    Err(program_error) => {
-                        let err =
-                            $crate::processor::InstructionError::from(u64::from(program_error));
-                        $crate::processor::stable_log::program_failure(
-                            &log_collector,
-                            &program_id_,
-                            &err,
-                        );
-                        let err: Box<dyn std::error::Error> = Box::new(err);
-                        ///Set program result to error
-                        {
-                            vm.program_result = Err(err)
-                                .map_err(|err| {
-                                    $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
-                                }).into();
-                        }
-                        return;
-                    }
-                },
-                Err(_panic_error) => {
-                    ///In case of panic, set program result to ProgramFailedToComplete, log failure and return
-                    let err = $crate::processor::InstructionError::ProgramFailedToComplete;
-                    $crate::processor::stable_log::program_failure(
-                        &log_collector,
-                        &program_id_,
-                        &err,
-                    );
+                Ok(Ok(_)) => {
+                    eprintln!("[processor] entry OK");
+                    $crate::processor::stable_log::program_success(&log_collector, &program_id_);
+                    vm.program_result = Ok(0).into();
+                }
+                Ok(Err(program_error)) => {
+                    eprintln!("[processor] entry ProgramError: {:?}", program_error);
+                    let err = $crate::processor::InstructionError::from(u64::from(program_error));
+                    $crate::processor::stable_log::program_failure(&log_collector, &program_id_, &err);
                     let err: Box<dyn std::error::Error> = Box::new(err);
-
-                    ///Set program result to error
-                    {
-                        vm.program_result = Err(err)
-                            .map_err(|err| {
-                                $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
-                            })
-                            .into();
-                    }
+                    vm.program_result = Err(err)
+                        .map_err(|err| {
+                            $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
+                        })
+                        .into();
                     return;
                 }
-            };
-
-            ///Post invocation
-            /// The type is inferred by the compiler
-            let account_infos = unsafe {
-                std::mem::transmute::<
-                    & _,
-                    &[$crate::processor::account_info::AccountInfo<'_>],
-                >(account_infos)
-            };
-
-            ///Post invocation
-            match $crate::processor::post_invocation(
-                vm.context_object_pointer,
-                &account_infos,
-                &deduplicated_indices,
-            ) {
-                Ok(_) => (),
-                Err(err) => {
+                Err(_) => {
+                    eprintln!("[processor] entry PANICKED");
+                    let err = $crate::processor::InstructionError::ProgramFailedToComplete;
+                    $crate::processor::stable_log::program_failure(&log_collector, &program_id_, &err);
+                    let err: Box<dyn std::error::Error> = Box::new(err);
                     vm.program_result = Err(err)
                         .map_err(|err| {
                             $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
@@ -159,9 +136,34 @@ macro_rules! processor {
                     return;
                 }
             }
-        })
-    };
+
+            eprintln!("[processor] post_invocation()");
+            let account_infos: &[$crate::processor::account_info::AccountInfo<'_>] = &account_infos;
+            if let Err(err) = $crate::processor::post_invocation(
+                vm.context_object_pointer,
+                &account_infos,
+                &deduplicated_indices,
+            ) {
+                eprintln!("[processor] post_invocation ERROR: {:?}", err);
+                vm.program_result = Err(err)
+                    .map_err(|err| {
+                        $crate::processor::solana_sbpf::error::EbpfError::SyscallError(err)
+                    })
+                    .into();
+                return;
+            }
+
+            eprintln!("[processor] EXIT OK");
+        }
+
+        let __ptr: $crate::processor::solana_program_runtime::invoke_context::BuiltinFunctionWithContext
+            = __trident_entry_shim;
+        Some(__ptr)
+    }};
 }
+
+
+
 
 pub fn pre_invocation(
     invoke_context: &mut InvokeContext,
@@ -186,6 +188,80 @@ pub fn pre_invocation(
 
     // set_invoke_context_v1(invoke_context);
     set_invoke_context_v2(invoke_context);
+    //let sysvar_stub = TridentSyscallStubs {};
+    let mut clock = Clock::default();
+let var_addr = &mut clock as *mut Clock as *mut u8;
+
+// Now call the syscall
+let sysvar_stub = TridentSyscallStubs {};
+let result = sysvar_stub.sol_get_clock_sysvar(var_addr);
+
+// After the syscall, `clock` contains the actual clock data
+println!("Current slot: {}", clock.slot);
+println!("RSEULF IS: {}", result);
+    //sysvar_stub.sol_get_clock_sysvar(var_addr)
+    let stubs = Box::new(TridentSyscallStubs {});
+   
+    let stubs_ptr = Box::into_raw(stubs) as usize;
+    std::env::set_var("TRIDENT_STUBS_PTR", format!("{}", stubs_ptr));
+
+    //use crate::sysvar_bridge::*;
+    //init_sysvar_bridge();
+unsafe {
+    let ctx_ptr = invoke_context as *mut _ as usize;
+    std::env::set_var("INVOKE_CTX_PTR", format!("{}", ctx_ptr));
+    eprintln!("[processor] Set INVOKE_CTX_PTR={:x}", ctx_ptr);
+}
+
+    // 🔹 Seed InvokeContext sysvar cache so stubs won't return UnsupportedSysvar
+    {
+        crate::svm_sysvars::setup_test_sysvars(invoke_context);
+        /*let ts = 1_726_160_000_i64;
+
+        let clock = Clock {
+            slot: 1,
+            epoch: 0,
+            leader_schedule_epoch: 0,
+            unix_timestamp: ts,
+            epoch_start_timestamp: ts,
+        };
+        let rent         = Rent::default();
+        let epoch        = EpochSchedule::default();
+        let fees         = Fees::default();
+ 
+        let slot_hashes  = SlotHashes::default();
+        let slot_history = SlotHistory::default();
+        let stake_hist   = StakeHistory::default();
+        // Get &SysvarCache, then cast to &mut SysvarCache (test-only hack)
+        let cache_ptr = invoke_context.get_sysvar_cache() as *const SysvarCache as *mut SysvarCache;
+        unsafe {
+            (*cache_ptr).set_sysvar_for_tests(&rent);
+            let rent_bytes = bincode::serialize(&rent).unwrap();
+            let rent_hex: String = rent_bytes.iter().map(|b| format!("{:02x}", b)).collect();
+            std::env::set_var("RENT_DATA_HEX", rent_hex);
+            (*cache_ptr).set_sysvar_for_tests(&clock);
+            let clock_bytes = bincode::serialize(&clock).unwrap();
+            let clock_hex: String = clock_bytes.iter().map(|b| format!("{:02x}", b)).collect();
+            std::env::set_var("CLOCK_DATA_HEX", clock_hex);
+            
+            (*cache_ptr).set_sysvar_for_tests(&epoch);
+            let epoch_bytes = bincode::serialize(&epoch).unwrap();
+            let epoch_hex: String = epoch_bytes.iter().map(|b| format!("{:02x}", b)).collect();
+            std::env::set_var("EPOCH_SCHEDULE_DATA_HEX", epoch_hex);
+
+
+            (*cache_ptr).set_sysvar_for_tests(&fees);
+            let fees_bytes = bincode::serialize(&fees).unwrap();
+            let fees_hex: String = fees_bytes.iter().map(|b| format!("{:02x}", b)).collect();
+            std::env::set_var("FEES_DATA_HEX", fees_hex);
+            (*cache_ptr).set_sysvar_for_tests(&slot_hashes);
+            (*cache_ptr).set_sysvar_for_tests(&stake_hist);
+        }
+            eprintln!("[processor] InvokeContext ptr: {:p}", invoke_context as *const _);
+            eprintln!("[processor] SysvarCache ptr: {:p}", cache_ptr);
+            */
+    }
+
 
     let transaction_context = &invoke_context.transaction_context;
     let instruction_context = transaction_context.get_current_instruction_context()?;
@@ -201,6 +277,7 @@ pub fn pre_invocation(
 
     Ok((parameter_bytes, deduplicated_indices))
 }
+
 
 pub fn post_invocation(
     invoke_context: &mut solana_program_runtime::invoke_context::InvokeContext,

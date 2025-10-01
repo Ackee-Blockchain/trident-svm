@@ -65,7 +65,8 @@ impl TridentSVM {
         &mut self,
         transaction: Transaction,
     ) -> solana_sdk::transaction::Result<()> {
-        let tx_processing_environment = TransactionProcessingEnvironment::default();
+        let mut tx_processing_environment = TransactionProcessingEnvironment::default();
+        tx_processing_environment.feature_set = self.feature_set.clone();
 
         let mut tx_processing_config = TransactionProcessingConfig {
             compute_budget: Some(ComputeBudget::default()),

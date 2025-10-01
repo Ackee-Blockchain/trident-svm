@@ -1,7 +1,7 @@
 use solana_sdk::clock::Clock;
 
 use crate::utils::get_current_timestamp;
-
+use solana_sdk::{pubkey::Pubkey, sysvar::SysvarId};
 #[derive(Default)]
 pub struct SysvarTracker {
     pub last_clock_update: u64, // unix timestamp as seconds

@@ -2,7 +2,9 @@ use crate::trident_svm::TridentSVM;
 use crate::types::trident_account::TridentAccountSharedData;
 use crate::types::trident_entrypoint::TridentEntrypoint;
 use crate::types::trident_program::TridentProgram;
+use crate::svm_sysvars::default_sysvar_accounts_2_2;
 
+use solana_sdk::{account::AccountSharedData, pubkey::Pubkey};
 #[derive(Default)]
 pub struct TridentSVMConfig {
     syscalls_v1: bool,
@@ -81,4 +83,26 @@ impl TridentSVMBuilder {
 
         svm
     }
+
+    pub fn with_default_sysvars_2_2(mut self) -> Self {
+        eprintln!("Seeding default sysvars for Solana 2.2.x");
+        for (pubkey, account) in default_sysvar_accounts_2_2() {
+            self.config.permanent_accounts.push(TridentAccountSharedData {
+                address: pubkey,
+                account,
+            });
+        }
+
+        println!(
+            "Seeded {} sysvars (2.2.x): {:?}",
+            self.config.permanent_accounts.len(),
+            self.config.permanent_accounts
+                .iter()
+                .map(|a| a.address)
+                .collect::<Vec<Pubkey>>()
+        );
+
+        self
+    }
+
 }
