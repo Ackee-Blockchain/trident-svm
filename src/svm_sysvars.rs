@@ -39,7 +39,6 @@ fn to_sysvar_raw(data: &[u8]) -> AccountSharedData {
 
 /// Canonical set of sysvars expected by 2.2.x (tested on 2.2.2).
 pub fn default_sysvar_accounts_2_2() -> Vec<(Pubkey, AccountSharedData)> {
-    eprintln!("MAUHAHAHAHAHAHAHAHAHA");
     let mut out = Vec::with_capacity(8);
 
     let push_and_log = |out: &mut Vec<(Pubkey, AccountSharedData)>, (k, v): (Pubkey, AccountSharedData)| {
