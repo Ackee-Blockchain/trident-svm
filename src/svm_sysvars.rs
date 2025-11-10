@@ -12,8 +12,6 @@ use solana_sdk::{
         stake_history::{self, StakeHistory},
         fees::{self, Fees},
 
-        instructions::{self, Instructions},
-
     },
 };
 use std::ptr;
