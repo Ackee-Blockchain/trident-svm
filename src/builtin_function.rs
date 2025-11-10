@@ -3,10 +3,10 @@
 use std::collections::HashMap;
 use std::sync::Once;
 
-use solana_sdk::{program_error::PrintProgramError, transaction_context::IndexOfAccount};
+use solana_sdk::{transaction_context::IndexOfAccount};
 
 use solana_bpf_loader_program::serialization::serialize_parameters;
-use trident_syscall_stubs_v2::TridentSyscallStubs;
+//use trident_syscall_stubs_v2::TridentSyscallStubs;
 use solana_program_runtime::invoke_context::InvokeContext;
 use solana_sbpf::aligned_memory::AlignedMemory;
 use solana_sbpf::ebpf::HOST_ALIGN;
@@ -14,7 +14,6 @@ use solana_sbpf::ebpf::HOST_ALIGN;
 use trident_syscall_stubs_v2::set_invoke_context as set_invoke_context_v2;
 use solana_sdk::clock::Clock;
   // This imports the module from sysvar_bridge.rs
-use solana_program::{program_stubs::SyscallStubs};
 static ONCE: Once = Once::new();
 
 #[macro_export]
@@ -174,12 +173,10 @@ pub fn pre_invocation(
 
 
     set_invoke_context_v2(invoke_context);
-    //let sysvar_stub = TridentSyscallStubs {};
-    let mut clock = Clock::default();
-    let var_addr = &mut clock as *mut Clock as *mut u8;
-
     // Now call the syscall
     // Below block is being kept for latter update to the technique
+    //let mut clock = Clock::default();
+    //let var_addr = &mut clock as *mut Clock as *mut u8;
     //let sysvar_stub = TridentSyscallStubs {};
     //let result = sysvar_stub.sol_get_clock_sysvar(var_addr);
     //let stubs = Box::new(TridentSyscallStubs {});
@@ -191,13 +188,11 @@ pub fn pre_invocation(
         std::env::set_var("INVOKE_CTX_PTR", format!("{}", ctx_ptr));
         eprintln!("[processor] Set INVOKE_CTX_PTR={:x}", ctx_ptr);
     }
-
     // Seed InvokeContext sysvar cache so stubs won't return UnsupportedSysvar
     {
         crate::svm_sysvars::setup_test_sysvars(invoke_context);
 
     }
-
 
     let transaction_context = &invoke_context.transaction_context;
     let instruction_context = transaction_context.get_current_instruction_context()?;
@@ -223,9 +218,7 @@ pub fn post_invocation(
     // Re-fetch the instruction context. The previous reference may have been
     // invalidated due to the `set_invoke_context` in a CPI.
     let transaction_context = &invoke_context.transaction_context;
-
     let instruction_context = transaction_context.get_current_instruction_context()?;
-
     let account_info_map: HashMap<_, _> = account_infos.iter().map(|a| (a.key, a)).collect();
 
     // Commit AccountInfo changes back into KeyedAccounts
