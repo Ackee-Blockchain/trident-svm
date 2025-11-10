@@ -12,23 +12,9 @@ use solana_sbpf::aligned_memory::AlignedMemory;
 use solana_sbpf::ebpf::HOST_ALIGN;
 // use trident_syscall_stubs_v1::set_invoke_context as set_invoke_context_v1;
 use trident_syscall_stubs_v2::set_invoke_context as set_invoke_context_v2;
-use std::panic;
-use solana_sdk::sysvar::{
-
-    rent::Rent,
-    epoch_schedule::EpochSchedule,
-    fees::Fees,
-    slot_hashes::SlotHashes,
-    slot_history::SlotHistory,
-    stake_history::StakeHistory,
-    Sysvar, // for defaults if needed
-};
-use solana_program_runtime::sysvar_cache::SysvarCache; // ok to keep, even if unused directly
-use solana_sdk::{sysvar::{instructions::Instructions, SysvarId}};
 use solana_sdk::clock::Clock;
   // This imports the module from sysvar_bridge.rs
-
-use solana_program::{example_mocks::solana_sdk::sysvar, program_stubs::SyscallStubs};
+use solana_program::{program_stubs::SyscallStubs};
 static ONCE: Once = Once::new();
 
 #[macro_export]
@@ -186,80 +172,30 @@ pub fn pre_invocation(
         }
     });
 
-    // set_invoke_context_v1(invoke_context);
+
     set_invoke_context_v2(invoke_context);
     //let sysvar_stub = TridentSyscallStubs {};
     let mut clock = Clock::default();
-let var_addr = &mut clock as *mut Clock as *mut u8;
+    let var_addr = &mut clock as *mut Clock as *mut u8;
 
-// Now call the syscall
-let sysvar_stub = TridentSyscallStubs {};
-let result = sysvar_stub.sol_get_clock_sysvar(var_addr);
+    // Now call the syscall
+    // Below block is being kept for latter update to the technique
+    //let sysvar_stub = TridentSyscallStubs {};
+    //let result = sysvar_stub.sol_get_clock_sysvar(var_addr);
+    //let stubs = Box::new(TridentSyscallStubs {});
+    //let stubs_ptr = Box::into_raw(stubs) as usize;
+    //std::env::set_var("TRIDENT_STUBS_PTR", format!("{}", stubs_ptr));
 
-// After the syscall, `clock` contains the actual clock data
-println!("Current slot: {}", clock.slot);
-println!("RSEULF IS: {}", result);
-    //sysvar_stub.sol_get_clock_sysvar(var_addr)
-    let stubs = Box::new(TridentSyscallStubs {});
-   
-    let stubs_ptr = Box::into_raw(stubs) as usize;
-    std::env::set_var("TRIDENT_STUBS_PTR", format!("{}", stubs_ptr));
+    unsafe {
+        let ctx_ptr = invoke_context as *mut _ as usize;
+        std::env::set_var("INVOKE_CTX_PTR", format!("{}", ctx_ptr));
+        eprintln!("[processor] Set INVOKE_CTX_PTR={:x}", ctx_ptr);
+    }
 
-    //use crate::sysvar_bridge::*;
-    //init_sysvar_bridge();
-unsafe {
-    let ctx_ptr = invoke_context as *mut _ as usize;
-    std::env::set_var("INVOKE_CTX_PTR", format!("{}", ctx_ptr));
-    eprintln!("[processor] Set INVOKE_CTX_PTR={:x}", ctx_ptr);
-}
-
-    // 🔹 Seed InvokeContext sysvar cache so stubs won't return UnsupportedSysvar
+    // Seed InvokeContext sysvar cache so stubs won't return UnsupportedSysvar
     {
         crate::svm_sysvars::setup_test_sysvars(invoke_context);
-        /*let ts = 1_726_160_000_i64;
 
-        let clock = Clock {
-            slot: 1,
-            epoch: 0,
-            leader_schedule_epoch: 0,
-            unix_timestamp: ts,
-            epoch_start_timestamp: ts,
-        };
-        let rent         = Rent::default();
-        let epoch        = EpochSchedule::default();
-        let fees         = Fees::default();
- 
-        let slot_hashes  = SlotHashes::default();
-        let slot_history = SlotHistory::default();
-        let stake_hist   = StakeHistory::default();
-        // Get &SysvarCache, then cast to &mut SysvarCache (test-only hack)
-        let cache_ptr = invoke_context.get_sysvar_cache() as *const SysvarCache as *mut SysvarCache;
-        unsafe {
-            (*cache_ptr).set_sysvar_for_tests(&rent);
-            let rent_bytes = bincode::serialize(&rent).unwrap();
-            let rent_hex: String = rent_bytes.iter().map(|b| format!("{:02x}", b)).collect();
-            std::env::set_var("RENT_DATA_HEX", rent_hex);
-            (*cache_ptr).set_sysvar_for_tests(&clock);
-            let clock_bytes = bincode::serialize(&clock).unwrap();
-            let clock_hex: String = clock_bytes.iter().map(|b| format!("{:02x}", b)).collect();
-            std::env::set_var("CLOCK_DATA_HEX", clock_hex);
-            
-            (*cache_ptr).set_sysvar_for_tests(&epoch);
-            let epoch_bytes = bincode::serialize(&epoch).unwrap();
-            let epoch_hex: String = epoch_bytes.iter().map(|b| format!("{:02x}", b)).collect();
-            std::env::set_var("EPOCH_SCHEDULE_DATA_HEX", epoch_hex);
-
-
-            (*cache_ptr).set_sysvar_for_tests(&fees);
-            let fees_bytes = bincode::serialize(&fees).unwrap();
-            let fees_hex: String = fees_bytes.iter().map(|b| format!("{:02x}", b)).collect();
-            std::env::set_var("FEES_DATA_HEX", fees_hex);
-            (*cache_ptr).set_sysvar_for_tests(&slot_hashes);
-            (*cache_ptr).set_sysvar_for_tests(&stake_hist);
-        }
-            eprintln!("[processor] InvokeContext ptr: {:p}", invoke_context as *const _);
-            eprintln!("[processor] SysvarCache ptr: {:p}", cache_ptr);
-            */
     }
 
 

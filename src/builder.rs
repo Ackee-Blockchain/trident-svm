@@ -4,7 +4,7 @@ use crate::types::trident_entrypoint::TridentEntrypoint;
 use crate::types::trident_program::TridentProgram;
 use crate::svm_sysvars::default_sysvar_accounts_2_2;
 
-use solana_sdk::{account::AccountSharedData, pubkey::Pubkey};
+use solana_sdk::pubkey::Pubkey;
 #[derive(Default)]
 pub struct TridentSVMConfig {
     syscalls_v1: bool,

@@ -2,7 +2,6 @@
 use solana_program::sysvar::{rent::Rent, clock::Clock, epoch_schedule::EpochSchedule, Sysvar};
 use bincode;
 
-use solana_program::program_stubs::SyscallStubs;
 /// Initialize all sysvar environment variables from TridentSVM context
 pub fn init_sysvar_bridge() -> Result<(), Box<dyn std::error::Error>> {
     // Get actual sysvars from TridentSVM's context

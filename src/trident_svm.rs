@@ -42,12 +42,7 @@ use crate::trident_fork_graphs::TridentForkGraph;
 
 use crate::types::trident_program::TridentProgram;
 use crate::utils::get_current_timestamp;
-use log::info;
 
-mod svm_sysvars;
-use crate::svm_sysvars::default_sysvar_accounts_2_2;
-
-use crate::types::trident_account::TridentAccountSharedData; // you already have this
 
 pub struct TridentSVM {
     pub(crate) accounts: AccountsDB,
@@ -164,8 +159,6 @@ impl TridentSVM {
                 )
                 .unwrap(),
             );
-            // cache.environments.program_runtime_v2 =
-            //     Arc::new(create_program_runtime_environment_v2(&compute_budget, true));
         }
 
         self
