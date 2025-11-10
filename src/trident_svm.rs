@@ -80,7 +80,6 @@ impl TridentSVM {
 
         // Initialize stats
         *stats = FuzzStats::new(fuzz_stats_path);
-
         self.fuzz_stats = Some(shmem);
     }
 }

@@ -6,8 +6,6 @@ mod native;
 mod trident_fork_graphs;
 mod utils;
 mod svm_sysvars; // ensure the module is visible to this file
-use crate::svm_sysvars::default_sysvar_accounts_2_2;
-use crate::svm_sysvars::setup_test_sysvars;
 
 pub mod builtin_function;
 pub mod fuzzing_metrics;
