@@ -11,7 +11,7 @@ use crate::trident_svm::TridentSVM;
 
 impl TridentSVM {
     pub fn get_account(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
-        self.accounts.get_account(pubkey)
+        self.accounts.get_account(pubkey, true)
     }
 
     pub fn set_account(&mut self, pubkey: &Pubkey, account: &AccountSharedData, permanent: bool) {

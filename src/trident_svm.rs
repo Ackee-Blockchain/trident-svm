@@ -73,7 +73,7 @@ impl TransactionProcessingCallback for TridentSVM {
     }
 
     fn get_account_shared_data(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
-        self.accounts.get_account(pubkey)
+        self.accounts.get_account(pubkey, false)
     }
 }
 

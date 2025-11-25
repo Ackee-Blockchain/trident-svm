@@ -38,6 +38,9 @@ impl AccountsDB {
         if T::id() == Clock::id() {
             self.update_clock();
         }
+        self.deserialize_sysvar::<T>()
+    }
+    pub(crate) fn deserialize_sysvar<T: SysvarId + DeserializeOwned>(&self) -> T {
         let sysvar = self
             .get_sysvar_account(&T::id())
             .expect("The requested sysvar is not available");

@@ -7,7 +7,11 @@ use solana_sysvar_id::SysvarId;
 use super::accounts_db::AccountsDB;
 
 impl AccountsDB {
-    pub(crate) fn get_account(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
+    pub(crate) fn get_account(
+        &self,
+        pubkey: &Pubkey,
+        update_clock: bool,
+    ) -> Option<AccountSharedData> {
         if let Some(account) = self.get_temporary_account(pubkey) {
             Some(account.to_owned())
         } else if let Some(permanent_account) = self.get_permanent_account(pubkey) {
@@ -15,7 +19,7 @@ impl AccountsDB {
         } else if let Some(program) = self.get_program(pubkey) {
             Some(program)
         } else {
-            if pubkey.eq(&Clock::id()) {
+            if pubkey.eq(&Clock::id()) && update_clock {
                 self.update_clock();
             }
             self.get_sysvar_account(pubkey)

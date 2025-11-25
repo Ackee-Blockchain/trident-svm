@@ -30,6 +30,7 @@ pub mod processor {
 
 pub mod prelude {
     pub use super::trident_svm_log;
+    pub use crate::types::transaction_result::TridentTransactionProcessingResult;
     pub use log::Level;
     pub use solana_svm;
 }
