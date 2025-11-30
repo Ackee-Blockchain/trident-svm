@@ -41,12 +41,12 @@ use crate::accounts_database::accounts_db::AccountsDB;
 use crate::builder::TridentSVMBuilder;
 
 use crate::trident_fork_graphs::TridentForkGraph;
+use crate::types::trident_account::TridentAccountSharedData;
 use crate::utils;
 use solana_builtins::BUILTINS;
 
 use solana_program_runtime::execution_budget::SVMTransactionExecutionBudget;
 
-use crate::types::trident_program::TridentProgram;
 use crate::utils::get_current_timestamp;
 
 pub struct TridentSVM {
@@ -181,7 +181,7 @@ impl TridentSVM {
     }
     fn with_builtins(mut self) -> Self {
         BUILTINS.iter().for_each(|builtint| {
-            self.accounts.set_program(
+            self.accounts.set_permanent_account(
                 &builtint.program_id,
                 &utils::create_loadable_account_for_test(builtint.name),
             );
@@ -197,65 +197,84 @@ impl TridentSVM {
         self
     }
     fn with_solana_program_library(mut self) -> Self {
-        let spl_token = TridentProgram::new(
+        // SPL Token is deployed with Loader v2
+        let spl_token = TridentAccountSharedData::loader_v2_program(
             pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-            None,
-            include_bytes!("solana-program-library/spl-token-mainnet.so").to_vec(),
+            include_bytes!("solana-program-library/spl-token-mainnet.so"),
         );
 
-        self.deploy_binary_program(&spl_token);
+        self.accounts
+            .set_permanent_account(&spl_token.address, &spl_token.account);
 
-        // SPL Token 2022 added for new Token 2022 Trident features
-        let spl_token_2022 = TridentProgram::new(
+        // SPL Token 2022 is deployed with Loader v3
+        let spl_token_2022 = TridentAccountSharedData::loader_v3_program(
             pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
+            include_bytes!("solana-program-library/spl-2022-token-mainnet.so"),
             None,
-            include_bytes!("solana-program-library/spl-2022-token-mainnet.so").to_vec(),
         );
 
-        self.deploy_binary_program(&spl_token_2022);
+        for account in spl_token_2022 {
+            self.accounts
+                .set_permanent_account(&account.address, &account.account);
+        }
 
-        let associated_token_program = TridentProgram::new(
+        // Associated Token Program is deployed with Loader v2
+        let associated_token_program = TridentAccountSharedData::loader_v2_program(
             pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
-            None,
-            include_bytes!("solana-program-library/associated-token-program-mainnet.so").to_vec(),
+            include_bytes!("solana-program-library/associated-token-program-mainnet.so"),
         );
 
-        self.deploy_binary_program(&associated_token_program);
+        self.accounts.set_permanent_account(
+            &associated_token_program.address,
+            &associated_token_program.account,
+        );
 
-        let metaplex_token_metadata = TridentProgram::new(
+        // Metaplex Token Metadata is deployed with Loader v3
+        let metaplex_token_metadata = TridentAccountSharedData::loader_v3_program(
             pubkey!("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"),
+            include_bytes!("solana-program-library/metaplex-token-metadata.so"),
             None,
-            include_bytes!("solana-program-library/metaplex-token-metadata.so").to_vec(),
         );
 
-        self.deploy_binary_program(&metaplex_token_metadata);
+        for account in metaplex_token_metadata {
+            self.accounts
+                .set_permanent_account(&account.address, &account.account);
+        }
 
-        // Interesting to have an Oracle program for testing programs with Price feed manipulation
-        // Another good program would be Pyth Oracle, which is good for cross-chain price feeds
-        let chainlink_oracle = TridentProgram::new(
+        // Chainlink Oracle is deployed with Loader v3
+        let chainlink_oracle = TridentAccountSharedData::loader_v3_program(
             pubkey!("HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny"),
+            include_bytes!("solana-program-library/chainlink-oracle.so"),
             None,
-            include_bytes!("solana-program-library/chainlink-oracle.so").to_vec(),
         );
 
-        self.deploy_binary_program(&chainlink_oracle);
+        for account in chainlink_oracle {
+            self.accounts
+                .set_permanent_account(&account.address, &account.account);
+        }
 
-        // Native Stake Pool (SPL Stake Pool):
-        // This program is used for managing stake pools, which can be useful for testing programs that interact with staking
-        let spl_stake_pool = TridentProgram::new(
+        // SPL Stake Pool is deployed with Loader v3
+        let spl_stake_pool = TridentAccountSharedData::loader_v3_program(
             pubkey!("SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy"),
+            include_bytes!("solana-program-library/spl-stake-pool.so"),
             None,
-            include_bytes!("solana-program-library/spl-stake-pool.so").to_vec(),
         );
-        self.deploy_binary_program(&spl_stake_pool);
 
-        // Could be interesting to have candy machine for testing programs that interact with it Minting NFTs
-        let metaplex_candy_machine_v3 = TridentProgram::new(
+        for account in spl_stake_pool {
+            self.accounts
+                .set_permanent_account(&account.address, &account.account);
+        }
+
+        // Metaplex Candy Machine V3 is deployed with Loader v3
+        let metaplex_candy_machine_v3 = TridentAccountSharedData::loader_v3_program(
             pubkey!("CndyV3LdqHUfDLmE5naZjVN8rBZz4tqhdefbAnjHG3JR"),
+            include_bytes!("solana-program-library/metaplex-candy-machine-v3.so"),
             None,
-            include_bytes!("solana-program-library/metaplex-candy-machine-v3.so").to_vec(),
         );
-        self.deploy_binary_program(&metaplex_candy_machine_v3);
+        for account in metaplex_candy_machine_v3 {
+            self.accounts
+                .set_permanent_account(&account.address, &account.account);
+        }
 
         self
     }
