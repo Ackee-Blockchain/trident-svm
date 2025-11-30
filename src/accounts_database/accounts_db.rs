@@ -14,7 +14,6 @@ use super::sysvar_tracker::SysvarTracker;
 pub struct AccountsDB {
     pub(crate) accounts: HashMap<Pubkey, AccountSharedData>,
     pub(crate) permanent_accounts: HashMap<Pubkey, AccountSharedData>,
-    pub(crate) programs: HashMap<Pubkey, AccountSharedData>,
     pub(crate) sysvars: HashMap<Pubkey, AccountSharedData>,
     pub(crate) sysvar_tracker: SysvarTracker,
 }
@@ -27,9 +26,6 @@ impl AccountsDB {
         self.permanent_accounts
             .get(pubkey)
             .map(|acc| acc.to_owned())
-    }
-    pub(crate) fn get_program(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
-        self.programs.get(pubkey).map(|acc| acc.to_owned())
     }
     pub(crate) fn get_sysvar_account(&self, pubkey: &Pubkey) -> Option<AccountSharedData> {
         self.sysvars.get(pubkey).map(|acc| acc.to_owned())
@@ -56,9 +52,6 @@ impl AccountsDB {
         let _ = self
             .permanent_accounts
             .insert(pubkey.to_owned(), account.to_owned());
-    }
-    pub(crate) fn set_program(&mut self, pubkey: &Pubkey, account: &AccountSharedData) {
-        let _ = self.programs.insert(pubkey.to_owned(), account.to_owned());
     }
     pub(crate) fn set_sysvar<T: Sysvar + SysvarId>(&mut self, sysvar: &T) {
         let account =
