@@ -5,7 +5,6 @@ use crate::trident_svm_log::turn_off_solana_logging;
 use crate::types::trident_account::TridentAccountSharedData;
 #[cfg(feature = "syscall-v2")]
 use crate::types::trident_entrypoint::TridentEntrypoint;
-use crate::types::trident_program::TridentProgram;
 
 #[derive(Default)]
 pub struct TridentSVMConfig {
@@ -15,7 +14,6 @@ pub struct TridentSVMConfig {
     debug_file_logs: Option<String>,
     #[cfg(feature = "syscall-v2")]
     program_entrypoints: Vec<TridentEntrypoint>,
-    program_binaries: Vec<TridentProgram>,
     permanent_accounts: Vec<TridentAccountSharedData>,
 }
 
@@ -44,11 +42,6 @@ impl TridentSVMBuilder {
     #[cfg(feature = "syscall-v2")]
     pub fn with_program_entries(&mut self, entries: Vec<TridentEntrypoint>) -> &Self {
         self.config.program_entrypoints = entries;
-        self
-    }
-
-    pub fn with_sbf_programs(&mut self, programs: Vec<TridentProgram>) -> &Self {
-        self.config.program_binaries = programs;
         self
     }
 
@@ -86,10 +79,6 @@ impl TridentSVMBuilder {
         #[cfg(feature = "syscall-v2")]
         for entry in &self.config.program_entrypoints {
             svm.deploy_entrypoint_program(entry);
-        }
-
-        for program in &self.config.program_binaries {
-            svm.deploy_binary_program(program);
         }
 
         for account in &self.config.permanent_accounts {

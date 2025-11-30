@@ -16,8 +16,6 @@ impl AccountsDB {
             Some(account.to_owned())
         } else if let Some(permanent_account) = self.get_permanent_account(pubkey) {
             Some(permanent_account.to_owned())
-        } else if let Some(program) = self.get_program(pubkey) {
-            Some(program)
         } else {
             if pubkey.eq(&Clock::id()) && update_clock {
                 self.update_clock();
