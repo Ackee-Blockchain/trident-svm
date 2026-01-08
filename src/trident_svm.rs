@@ -81,10 +81,17 @@ impl Default for TridentSVM {
     fn default() -> Self {
         let payer = Keypair::new();
 
+        let feature_set = SVMFeatureSet {
+            enable_sbpf_v1_deployment_and_execution: true,
+            enable_sbpf_v2_deployment_and_execution: true,
+            enable_sbpf_v3_deployment_and_execution: true,
+            ..Default::default()
+        };
+
         let mut client = Self {
             accounts: Default::default(),
             payer: payer.insecure_clone(),
-            feature_set: Arc::new(SVMFeatureSet::default()),
+            feature_set: Arc::new(feature_set),
             processor: TransactionBatchProcessor::<TridentForkGraph>::new(
                 1,
                 1,
