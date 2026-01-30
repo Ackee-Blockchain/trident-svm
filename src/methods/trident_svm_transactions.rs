@@ -97,6 +97,21 @@ impl TridentSVM {
             &tx_processing_config,
         );
 
+        println!(
+            "result: {:?}",
+            self.processor
+                .program_cache
+                .read()
+                .unwrap()
+                .environments
+                .program_runtime_v1
+                .get_config()
+        );
+
+        // if let Some(trace_collector) = &self.trace_collector {
+        //     trace_collector.trace(&result.traces);
+        // }
+
         // update clock
         self.accounts.update_clock();
 

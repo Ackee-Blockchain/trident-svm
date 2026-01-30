@@ -41,6 +41,7 @@ use crate::accounts_database::accounts_db::AccountsDB;
 use crate::builder::TridentSVMBuilder;
 
 use crate::trident_fork_graphs::TridentForkGraph;
+use crate::types::TraceCollector;
 use crate::utils;
 use solana_builtins::BUILTINS;
 
@@ -55,6 +56,7 @@ pub struct TridentSVM {
     pub(crate) feature_set: Arc<SVMFeatureSet>,
     pub(crate) processor: TransactionBatchProcessor<TridentForkGraph>,
     pub(crate) fork_graph: Arc<RwLock<TridentForkGraph>>,
+    pub(crate) trace_collector: Option<TraceCollector>,
 }
 
 impl TridentSVM {
@@ -93,6 +95,7 @@ impl Default for TridentSVM {
                 None,
             ),
             fork_graph: Arc::new(RwLock::new(TridentForkGraph {})),
+            trace_collector: None,
         };
 
         let payer_account = AccountSharedData::new(
@@ -136,7 +139,7 @@ impl TridentSVM {
                     &self.feature_set,
                     &compute_budget,
                     false,
-                    false,
+                    true,
                 )
                 .expect("Failed to create program runtime environment"),
             );
@@ -251,6 +254,10 @@ impl TridentSVM {
         self.deploy_binary_program(&metaplex_candy_machine_v3);
 
         self
+    }
+
+    pub(crate) fn set_trace_collector(&mut self, trace_collector: TraceCollector) {
+        self.trace_collector = Some(trace_collector);
     }
 
     pub fn clear_accounts(&mut self) {

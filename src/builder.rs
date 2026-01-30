@@ -6,6 +6,7 @@ use crate::types::trident_account::TridentAccountSharedData;
 #[cfg(feature = "syscall-v2")]
 use crate::types::trident_entrypoint::TridentEntrypoint;
 use crate::types::trident_program::TridentProgram;
+use crate::types::TraceCollector;
 
 #[derive(Default)]
 pub struct TridentSVMConfig {
@@ -17,6 +18,7 @@ pub struct TridentSVMConfig {
     program_entrypoints: Vec<TridentEntrypoint>,
     program_binaries: Vec<TridentProgram>,
     permanent_accounts: Vec<TridentAccountSharedData>,
+    tracing: bool,
 }
 
 #[derive(Default)]
@@ -67,6 +69,11 @@ impl TridentSVMBuilder {
         self
     }
 
+    pub fn with_tracing(&mut self) -> &Self {
+        self.config.tracing = true;
+        self
+    }
+
     pub fn build(&self) -> TridentSVM {
         let mut svm = TridentSVM::default();
 
@@ -95,6 +102,11 @@ impl TridentSVMBuilder {
         for account in &self.config.permanent_accounts {
             svm.accounts
                 .set_permanent_account(&account.address, &account.account);
+        }
+
+        if self.config.tracing {
+            let trace_collector = TraceCollector::new();
+            svm.set_trace_collector(trace_collector);
         }
 
         svm

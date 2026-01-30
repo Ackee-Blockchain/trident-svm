@@ -1,0 +1,9 @@
+{
+  "rust-analyzer.linkedProjects": [
+    "./Cargo.toml",
+    "./litesvm-tracing/Cargo.toml",
+    "./hello_world/Cargo.toml",
+    "./hello_world/trident-tests/Cargo.toml"
+
+  ]
+}

@@ -30,7 +30,18 @@ pub mod processor {
 
 pub mod prelude {
     pub use super::trident_svm_log;
-    pub use crate::types::transaction_result::TridentTransactionProcessingResult;
+    pub use crate::types::transaction_result::{
+        ExecutionTraces, TracedTransactionResult, TridentTransactionProcessingResult,
+    };
+    // Coverage utilities for AFL integration
+    pub use crate::types::coverage::{
+        count_edges, count_trace_entries, reset_coverage_map, traces_to_coverage,
+        traces_to_coverage_map, CoverageMap, COVERAGE_MAP_SIZE,
+        // Enhanced versions
+        traces_to_coverage_map_context,
+        traces_to_coverage_map_dataflow,
+        traces_to_coverage_map_enhanced,
+    };
     pub use log::Level;
     pub use solana_svm;
 }

@@ -14,7 +14,6 @@ syscalls = ["syscall-v2"]
 syscall-v2 = [
     "trident-syscall-stubs-v2",
     "solana-sbpf",
-    "solana-transaction-context",
     "solana-program-entrypoint",
 ]
 
@@ -52,12 +51,21 @@ solana-compute-budget = "2.3"
 solana-logger = "2.2"
 solana-fee-structure = "2.2"
 
+
+
+solana-svm-transaction = "2.3.13"
+solana-timings = "2.3.13"
+solana-measure= "2.3.13"
+
 # agave-syscalls = "0" ## placeholder, might be used later
 
 # Stubs
 solana-sbpf = {version = "0.11", optional = true}
-solana-transaction-context = {version = "2.2", optional = true}
 solana-program-entrypoint = {version = "2.2", optional = true}
+
+# Transaction context (required for tracing)
+solana-transaction-context = "2.2"
+solana-log-collector = "2.2"
 
 # Misc
 serde = { version = "1", default-features = false }
