@@ -131,7 +131,10 @@ impl TridentSVM {
 pub(crate) fn get_transaction_check_results(
     len: usize,
 ) -> Vec<solana_transaction_error::TransactionResult<CheckedTransactionDetails>> {
-    let compute_budget_limit = ComputeBudgetLimits::default();
+    let compute_budget_limit = ComputeBudgetLimits {
+        updated_heap_bytes: 256 * 1024, // max heap frame
+        ..ComputeBudgetLimits::default()
+    };
     vec![
         solana_transaction_error::TransactionResult::Ok(CheckedTransactionDetails::new(
             None,
