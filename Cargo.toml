@@ -51,6 +51,9 @@ solana-builtins = "2.2"
 solana-compute-budget = "2.3"
 solana-logger = "2.2"
 solana-fee-structure = "2.2"
+agave-feature-set = "2.2"
+solana-precompile-error = "2.2"
+agave-precompiles = "2.3"
 
 # agave-syscalls = "0" ## placeholder, might be used later
 

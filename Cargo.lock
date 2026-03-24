@@ -59,6 +59,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "agave-precompiles"
+version = "2.3.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d60d73657792af7f2464e9181d13c3979e94bb09841d9ffa014eef4ef0492b77"
+dependencies = [
+ "agave-feature-set",
+ "bincode",
+ "digest 0.10.7",
+ "ed25519-dalek",
+ "libsecp256k1",
+ "openssl",
+ "sha3",
+ "solana-ed25519-program",
+ "solana-message",
+ "solana-precompile-error",
+ "solana-pubkey",
+ "solana-sdk-ids",
+ "solana-secp256k1-program",
+ "solana-secp256r1-program",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1743,6 +1765,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "openssl-src"
+version = "300.5.5+3.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f1787d533e03597a7934fd0a765f0d28e94ecc5fb7789f8053b1e699a56f709"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "openssl-sys"
 version = "0.9.111"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1750,6 +1781,7 @@ checksum = "82cab2d520aa75e3c58898289429321eb788c3106963d0dc886ec7a5f4adc321"
 dependencies = [
  "cc",
  "libc",
+ "openssl-src",
  "pkg-config",
  "vcpkg",
 ]
@@ -4700,6 +4732,8 @@ dependencies = [
 name = "trident-svm"
 version = "0.3.0-rc.2"
 dependencies = [
+ "agave-feature-set",
+ "agave-precompiles",
  "bincode",
  "log",
  "serde",
@@ -4717,6 +4751,7 @@ dependencies = [
  "solana-keypair",
  "solana-loader-v3-interface",
  "solana-logger",
+ "solana-precompile-error",
  "solana-program-entrypoint",
  "solana-program-runtime",
  "solana-pubkey",
