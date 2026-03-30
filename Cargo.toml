@@ -14,7 +14,6 @@ syscalls = ["syscall-v2"]
 syscall-v2 = [
     "trident-syscall-stubs-v2",
     "solana-sbpf",
-    "solana-transaction-context",
     "solana-program-entrypoint",
 ]
 
@@ -36,6 +35,7 @@ solana-sysvar-id = "2.2"
 solana-keypair = "2.2"
 solana-transaction-error = "2.2"
 solana-transaction = {version = "2.2", features = ["blake3"]}
+solana-message = "2.2"
 solana-clock = "2.2"
 solana-rent = "2.2"
 solana-signer = "2.2"
@@ -57,9 +57,10 @@ agave-precompiles = "2.3"
 
 # agave-syscalls = "0" ## placeholder, might be used later
 
+solana-transaction-context = "2.2"
+
 # Stubs
 solana-sbpf = {version = "0.11", optional = true}
-solana-transaction-context = {version = "2.2", optional = true}
 solana-program-entrypoint = {version = "2.2", optional = true}
 
 # Misc
