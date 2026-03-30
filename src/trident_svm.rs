@@ -48,6 +48,7 @@ use solana_builtins::BUILTINS;
 use solana_program_runtime::execution_budget::SVMTransactionExecutionBudget;
 
 use crate::utils::get_current_timestamp;
+use solana_precompile_error::PrecompileError;
 
 pub struct TridentSVM {
     pub(crate) accounts: AccountsDB,
@@ -64,7 +65,36 @@ impl TridentSVM {
     }
 }
 
-impl InvokeContextCallback for TridentSVM {}
+impl InvokeContextCallback for TridentSVM {
+    fn is_precompile(&self, program_id: &Pubkey) -> bool {
+        // Precompiles (ed25519/secp256k1/secp256r1) are handled by the runtime, not loaded as SBF.
+        // The SVM asks this callback whether a program id is a precompile.
+        static FEATURE_SET: std::sync::OnceLock<agave_feature_set::FeatureSet> =
+            std::sync::OnceLock::new();
+        let feature_set = FEATURE_SET.get_or_init(agave_feature_set::FeatureSet::all_enabled);
+
+        agave_precompiles::is_precompile(program_id, |feature_id| feature_set.is_active(feature_id))
+    }
+
+    fn process_precompile(
+        &self,
+        program_id: &Pubkey,
+        data: &[u8],
+        instruction_datas: Vec<&[u8]>,
+    ) -> Result<(), PrecompileError> {
+        static FEATURE_SET: std::sync::OnceLock<agave_feature_set::FeatureSet> =
+            std::sync::OnceLock::new();
+        let feature_set = FEATURE_SET.get_or_init(agave_feature_set::FeatureSet::all_enabled);
+
+        let Some(precompile) = agave_precompiles::get_precompile(program_id, |feature_id| {
+            feature_set.is_active(feature_id)
+        }) else {
+            return Err(PrecompileError::InvalidPublicKey);
+        };
+
+        precompile.verify(data, instruction_datas.as_slice(), feature_set)
+    }
+}
 
 impl TransactionProcessingCallback for TridentSVM {
     fn account_matches_owners(&self, account: &Pubkey, owners: &[Pubkey]) -> Option<usize> {
@@ -115,6 +145,7 @@ impl Default for TridentSVM {
             .with_processor()
             .with_sysvars()
             .with_builtins()
+            .with_precompiles()
             .with_solana_program_library()
     }
 }
@@ -193,6 +224,29 @@ impl TridentSVM {
                 ProgramCacheEntry::new_builtin(0, builtint.name.len(), builtint.entrypoint),
             );
         });
+
+        self
+    }
+
+    fn with_precompiles(mut self) -> Self {
+        // Precompiles are executed via the InvokeContextCallback, but the transaction still must
+        // include their program accounts. In the validator these exist from genesis; we add them
+        // here so callers don't need to fetch them from mainnet.
+        let precompiles = [
+            (solana_sdk_ids::ed25519_program::id(), "ed25519-precompile"),
+            (
+                solana_sdk_ids::secp256k1_program::id(),
+                "secp256k1-precompile",
+            ),
+            (
+                solana_sdk_ids::secp256r1_program::id(),
+                "secp256r1-precompile",
+            ),
+        ];
+        for (program_id, name) in precompiles {
+            self.accounts
+                .set_permanent_account(&program_id, &utils::create_loadable_account_for_test(name));
+        }
 
         self
     }
