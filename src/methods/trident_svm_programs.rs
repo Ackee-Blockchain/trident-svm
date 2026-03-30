@@ -8,7 +8,8 @@ use crate::trident_svm::TridentSVM;
 impl TridentSVM {
     #[cfg(feature = "syscall-v2")]
     pub fn deploy_entrypoint_program(&mut self, program: &TridentEntrypoint) {
-        use solana_account::{AccountSharedData, WritableAccount};
+        use solana_account::AccountSharedData;
+        use solana_account::WritableAccount;
         use solana_loader_v3_interface::state::UpgradeableLoaderState;
         use solana_rent::Rent;
 

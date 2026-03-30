@@ -234,8 +234,14 @@ impl TridentSVM {
         // here so callers don't need to fetch them from mainnet.
         let precompiles = [
             (solana_sdk_ids::ed25519_program::id(), "ed25519-precompile"),
-            (solana_sdk_ids::secp256k1_program::id(), "secp256k1-precompile"),
-            (solana_sdk_ids::secp256r1_program::id(), "secp256r1-precompile"),
+            (
+                solana_sdk_ids::secp256k1_program::id(),
+                "secp256k1-precompile",
+            ),
+            (
+                solana_sdk_ids::secp256r1_program::id(),
+                "secp256r1-precompile",
+            ),
         ];
         for (program_id, name) in precompiles {
             self.accounts
