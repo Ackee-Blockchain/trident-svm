@@ -4753,6 +4753,7 @@ dependencies = [
  "solana-keypair",
  "solana-loader-v3-interface",
  "solana-logger",
+ "solana-message",
  "solana-precompile-error",
  "solana-program-entrypoint",
  "solana-program-runtime",
