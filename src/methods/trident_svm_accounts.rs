@@ -35,14 +35,41 @@ impl TridentSVM {
     pub(crate) fn settle_accounts(&mut self, accounts: &[(Pubkey, AccountSharedData)]) {
         for account in accounts {
             if !account.1.executable() && account.1.owner() != &solana_sdk_ids::sysvar::id() {
-                // Update permanent account if it should be updated
-                if self.accounts.get_permanent_account(&account.0).is_some() {
-                    self.accounts.set_permanent_account(&account.0, &account.1);
-                } else {
-                    // Otherwise, add it to the temp accounts
-                    self.accounts.set_temporary_account(&account.0, &account.1);
-                }
+                // Always settle into the temporary overlay.
+                //
+                // Permanent accounts are treated as an immutable base snapshot (genesis + forks).
+                // This allows `clear_accounts()` (which resets temp) to restore the initial state
+                // for the next fuzz iteration.
+                self.accounts.set_temporary_account(&account.0, &account.1);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use solana_account::WritableAccount;
+    use solana_pubkey::Pubkey;
+
+    #[test]
+    fn permanent_account_is_restored_after_clear_accounts() {
+        let mut svm = TridentSVM::default();
+        let key = Pubkey::new_unique();
+
+        let mut base = AccountSharedData::new(123, 0, &solana_sdk_ids::system_program::id());
+        base.set_lamports(123);
+        svm.accounts.set_permanent_account(&key, &base);
+
+        let mut updated = base.clone();
+        updated.set_lamports(999);
+        svm.settle_accounts(&[(key, updated.clone())]);
+
+        // Updated value should be visible (temp shadows permanent).
+        assert_eq!(svm.get_account(&key).unwrap().lamports(), 999);
+
+        // Clearing temp should restore the permanent base snapshot.
+        svm.clear_accounts();
+        assert_eq!(svm.get_account(&key).unwrap().lamports(), 123);
     }
 }
