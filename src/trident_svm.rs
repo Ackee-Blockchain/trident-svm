@@ -115,6 +115,7 @@ impl Default for TridentSVM {
             enable_sbpf_v1_deployment_and_execution: true,
             enable_sbpf_v2_deployment_and_execution: true,
             enable_sbpf_v3_deployment_and_execution: true,
+            get_sysvar_syscall_enabled: true,
             ..Default::default()
         };
 
