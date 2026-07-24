@@ -204,7 +204,14 @@ impl TridentSVM {
             &latest_blockhash,
             fees.fee_calculator.lamports_per_signature,
         )]));
-        self.set_sysvar(&Rent::default());
+        // Match SIMD-0194 / LiteSVM: Pinocchio 0.11+ reads only the first 8 bytes as
+        // lamports_per_byte and does not apply exemption_threshold. Classic Rent::default()
+        // (3480 / 2.0) would under-quote by 2x vs runtime settlement and SPL Token-2022.
+        let mut rent_account = Rent::default();
+        rent_account.exemption_threshold = 1.0;
+        rent_account.lamports_per_byte_year =
+            solana_rent::DEFAULT_LAMPORTS_PER_BYTE_YEAR.saturating_mul(2);
+        self.set_sysvar(&rent_account);
         self.set_sysvar(&SlotHashes::new(&[(0, latest_blockhash)]));
         self.set_sysvar(&SlotHistory::default());
         self.set_sysvar(&StakeHistory::default());
